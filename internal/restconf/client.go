@@ -42,7 +42,7 @@ type Client struct {
 // self-signed certificate on localhost.
 func NewClient(baseURL string) *Client {
 	return &Client{
-		baseURL: escapeZoneID(baseURL),
+		baseURL: strings.TrimRight(escapeZoneID(baseURL), "/"),
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 			Transport: &http.Transport{
@@ -103,7 +103,7 @@ func (c *Client) CheckAuth(username, password string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("authentication failed (HTTP %d)", resp.StatusCode)
+		return &AuthError{Code: resp.StatusCode}
 	}
 	if resp.StatusCode != http.StatusOK {
 		return parseError(resp)

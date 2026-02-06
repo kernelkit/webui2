@@ -7,6 +7,15 @@ import (
 	"net/http"
 )
 
+// AuthError is returned when RESTCONF rejects credentials (401/403).
+type AuthError struct {
+	Code int
+}
+
+func (e *AuthError) Error() string {
+	return fmt.Sprintf("authentication failed (HTTP %d)", e.Code)
+}
+
 // Error represents a RESTCONF error response.
 type Error struct {
 	StatusCode int

@@ -36,6 +36,24 @@
       {{end}}
     </table>
   </div>
+
+  {{if .Board.Model}}
+  <div class="info-card">
+    <h2>Hardware</h2>
+    <table class="info-table">
+      {{if .Board.Model}}<tr><th>Model</th><td>{{.Board.Model}}</td></tr>{{end}}
+      {{if .Board.Manufacturer}}<tr><th>Manufacturer</th><td>{{.Board.Manufacturer}}</td></tr>{{end}}
+      {{if .Board.SerialNum}}<tr><th>Serial Number</th><td>{{.Board.SerialNum}}</td></tr>{{end}}
+      {{if .Board.HardwareRev}}<tr><th>Hardware Rev</th><td>{{.Board.HardwareRev}}</td></tr>{{end}}
+      {{if .Board.BaseMAC}}<tr><th>Base MAC</th><td>{{.Board.BaseMAC}}</td></tr>{{end}}
+      {{if .Sensors}}
+      {{range .Sensors}}
+      <tr><th>{{.Name}}</th><td>{{.Value}}</td></tr>
+      {{end}}
+      {{end}}
+    </table>
+  </div>
+  {{end}}
 </section>
 
 {{if .Interfaces}}
@@ -47,27 +65,20 @@
         <th>Name</th>
         <th>Type</th>
         <th>Status</th>
+        <th>MAC</th>
         <th>Address</th>
+        <th>Detail</th>
       </tr>
     </thead>
     <tbody>
       {{range .Interfaces}}
-      <tr class="iface-row">
-        <td>{{.Name}}</td>
+      <tr>
+        <td class="iface-name">{{if .Indent}}<span class="tree-pipe">{{.Indent}}</span>{{end}}{{.Name}}</td>
         <td>{{.Type}}</td>
         <td><span class="status-dot {{if .StatusUp}}status-up{{else}}status-down{{end}}"></span>{{.Status}}</td>
-        <td>{{range $i, $a := .Addresses}}{{if $i}}, {{end}}{{$a}}{{end}}</td>
-        <td class="iface-detail">
-          <div class="iface-tooltip">
-            <table class="info-table">
-              {{if .PhysAddr}}<tr><th>MAC</th><td>{{.PhysAddr}}</td></tr>{{end}}
-              {{if .Speed}}<tr><th>Speed</th><td>{{.Speed}}</td></tr>{{end}}
-              {{if .Duplex}}<tr><th>Duplex</th><td>{{.Duplex}}</td></tr>{{end}}
-              {{if .RxBytes}}<tr><th>RX</th><td>{{.RxBytes}}</td></tr>{{end}}
-              {{if .TxBytes}}<tr><th>TX</th><td>{{.TxBytes}}</td></tr>{{end}}
-            </table>
-          </div>
-        </td>
+        <td>{{.PhysAddr}}</td>
+        <td>{{range $i, $a := .Addresses}}{{if $i}}<br>{{end}}{{$a.Address}}{{if $a.Origin}} <span class="addr-origin">({{$a.Origin}})</span>{{end}}{{end}}</td>
+        <td>{{.Detail}}</td>
       </tr>
       {{end}}
     </tbody>

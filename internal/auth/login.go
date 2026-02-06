@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"html/template"
 	"log"
 	"net/http"
@@ -41,7 +42,12 @@ func (h *LoginHandler) DoLogin(w http.ResponseWriter, r *http.Request) {
 	err := h.RC.CheckAuth(username, password)
 	if err != nil {
 		log.Printf("login failed for %q: %v", username, err)
-		h.renderLogin(w, "Invalid username or password.")
+		var authErr *restconf.AuthError
+		if errors.As(err, &authErr) {
+			h.renderLogin(w, "Invalid username or password.")
+		} else {
+			h.renderLogin(w, "Unable to reach the device. Please try again later.")
+		}
 		return
 	}
 

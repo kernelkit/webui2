@@ -36,11 +36,12 @@ type asymmetricKeysJSON struct {
 }
 
 type asymmetricKeyJSON struct {
-	Name             string           `json:"name"`
-	PrivateKeyFormat string           `json:"private-key-format"`
-	PublicKeyFormat  string           `json:"public-key-format"`
-	PublicKey        string           `json:"public-key"`
-	Certificates     certificatesJSON `json:"certificates"`
+	Name                 string           `json:"name"`
+	PrivateKeyFormat     string           `json:"private-key-format"`
+	PublicKeyFormat      string           `json:"public-key-format"`
+	PublicKey            string           `json:"public-key"`
+	CleartextPrivateKey  string           `json:"cleartext-private-key"`
+	Certificates         certificatesJSON `json:"certificates"`
 }
 
 type certificatesJSON struct {
@@ -69,11 +70,13 @@ type symKeyEntry struct {
 }
 
 type asymKeyEntry struct {
-	Name         string
-	Algorithm    string
-	PublicKey    string
-	PublicKeyFull string
-	Certificates []string
+	Name           string
+	Algorithm      string
+	PublicKey      string
+	PublicKeyFull  string
+	PrivateKey     string
+	PrivateKeyFull string
+	Certificates   []string
 }
 
 // KeystoreHandler serves the keystore overview page.
@@ -102,10 +105,12 @@ func (h *KeystoreHandler) Overview(w http.ResponseWriter, r *http.Request) {
 
 		for _, k := range ks.Keystore.AsymmetricKeys.AsymmetricKey {
 			entry := asymKeyEntry{
-				Name:         k.Name,
-				Algorithm:    asymAlgorithm(k),
-				PublicKeyFull: k.PublicKey,
-				PublicKey:    truncate(k.PublicKey, 40),
+				Name:           k.Name,
+				Algorithm:      asymAlgorithm(k),
+				PublicKeyFull:  k.PublicKey,
+				PublicKey:      truncate(k.PublicKey, 40),
+				PrivateKeyFull: k.CleartextPrivateKey,
+				PrivateKey:     truncate(k.CleartextPrivateKey, 40),
 			}
 			for _, c := range k.Certificates.Certificate {
 				entry.Certificates = append(entry.Certificates, c.Name)

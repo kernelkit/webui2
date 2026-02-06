@@ -200,8 +200,7 @@ func buildMatrix(zones []zoneJSON, policies []policyJSON) ([]string, []matrixRow
 				// Traffic originating from the device is always allowed.
 				rows[i].Cells[j] = matrixCell{Class: "matrix-allow", Symbol: "\u2713"}
 			case src == dst:
-				// Intra-zone forwarding is not allowed by default.
-				rows[i].Cells[j] = matrixCell{Class: "matrix-deny", Symbol: "\u2717"}
+				rows[i].Cells[j] = matrixCell{Class: "matrix-self", Symbol: "\u2014"}
 			case dst == "HOST":
 				// Input to device: governed by zone action + policies.
 				rows[i].Cells[j] = zoneToHost(src, zoneAction, sorted)

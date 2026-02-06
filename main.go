@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/kernelkit/infix-webui/internal/auth"
 	"github.com/kernelkit/infix-webui/internal/restconf"
@@ -19,8 +20,13 @@ var templateFS embed.FS
 var staticFS embed.FS
 
 func main() {
+	defaultRC := "http://localhost:8080/restconf"
+	if env := os.Getenv("RESTCONF_URL"); env != "" {
+		defaultRC = env
+	}
+
 	listen := flag.String("listen", ":8080", "address to listen on")
-	restconfURL := flag.String("restconf", "https://[fe80::ff:fe00:1%qtap1]/restconf", "RESTCONF base URL")
+	restconfURL := flag.String("restconf", defaultRC, "RESTCONF base URL")
 	flag.Parse()
 
 	store, err := auth.NewSessionStore()
