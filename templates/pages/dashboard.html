@@ -1,0 +1,105 @@
+{{define "dashboard.html"}}
+{{template "base" .}}
+{{end}}
+
+{{define "content"}}
+{{if .Error}}
+<div class="alert alert-error">{{.Error}}</div>
+{{end}}
+
+<section class="info-grid">
+  <div class="info-card">
+    <h2>System Information</h2>
+    <table class="info-table">
+      {{if .Hostname}}<tr><th>Hostname</th><td>{{.Hostname}}</td></tr>{{end}}
+      {{if .OSName}}<tr><th>OS</th><td>{{.OSName}} {{.OSVersion}}</td></tr>{{end}}
+      {{if .Machine}}<tr><th>Architecture</th><td>{{.Machine}}</td></tr>{{end}}
+      {{if .Firmware}}<tr><th>Firmware</th><td>{{.Firmware}}</td></tr>{{end}}
+      {{if .Uptime}}<tr><th>Uptime</th><td>{{.Uptime}}</td></tr>{{end}}
+    </table>
+  </div>
+
+  <div class="info-card">
+    <h2>Resources</h2>
+    <table class="info-table">
+      {{if .MemTotal}}
+      <tr>
+        <th>Memory</th>
+        <td>{{.MemUsed}} / {{.MemTotal}} MiB ({{.MemPercent}}%)</td>
+      </tr>
+      {{end}}
+      {{if .Load1}}
+      <tr>
+        <th>Load Average</th>
+        <td>{{.Load1}}, {{.Load5}}, {{.Load15}}</td>
+      </tr>
+      {{end}}
+    </table>
+  </div>
+</section>
+
+{{if .Interfaces}}
+<section class="info-card">
+  <h2>Interfaces</h2>
+  <table class="disk-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Status</th>
+        <th>Address</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Interfaces}}
+      <tr class="iface-row">
+        <td>{{.Name}}</td>
+        <td>{{.Type}}</td>
+        <td><span class="status-dot {{if .StatusUp}}status-up{{else}}status-down{{end}}"></span>{{.Status}}</td>
+        <td>{{range $i, $a := .Addresses}}{{if $i}}, {{end}}{{$a}}{{end}}</td>
+        <td class="iface-detail">
+          <div class="iface-tooltip">
+            <table class="info-table">
+              {{if .PhysAddr}}<tr><th>MAC</th><td>{{.PhysAddr}}</td></tr>{{end}}
+              {{if .Speed}}<tr><th>Speed</th><td>{{.Speed}}</td></tr>{{end}}
+              {{if .Duplex}}<tr><th>Duplex</th><td>{{.Duplex}}</td></tr>{{end}}
+              {{if .RxBytes}}<tr><th>RX</th><td>{{.RxBytes}}</td></tr>{{end}}
+              {{if .TxBytes}}<tr><th>TX</th><td>{{.TxBytes}}</td></tr>{{end}}
+            </table>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+
+{{if .Disks}}
+<section class="info-card">
+  <h2>Disk Usage</h2>
+  <table class="disk-table">
+    <thead>
+      <tr>
+        <th>Mount</th>
+        <th>Size</th>
+        <th>Used</th>
+        <th>Available</th>
+        <th>Use%</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Disks}}
+      <tr>
+        <td>{{.Mount}}</td>
+        <td>{{.Size}}</td>
+        <td>{{.Used}}</td>
+        <td>{{.Available}}</td>
+        <td>{{.Percent}}%</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{end}}

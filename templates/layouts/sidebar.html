@@ -1,0 +1,35 @@
+{{define "sidebar"}}
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <img src="/assets/img/logo.png" alt="Infix" class="sidebar-logo">
+  </div>
+  <ul class="sidebar-nav">
+    <li>
+      <a href="/"
+         hx-get="/"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link">Dashboard</a>
+    </li>
+    <li>
+      <a href="/firewall"
+         hx-get="/firewall"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link">Firewall</a>
+    </li>
+    <li>
+      <a href="/keystore"
+         hx-get="/keystore"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link">Keystore</a>
+    </li>
+  </ul>
+  <div class="sidebar-footer">
+    <form method="POST" action="/logout">
+      <button type="submit" class="btn btn-logout">Logout</button>
+    </form>
+  </div>
+</nav>
+{{end}}
