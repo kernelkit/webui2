@@ -35,6 +35,10 @@ func New(
 	if err != nil {
 		return nil, err
 	}
+	fwrTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/firmware.html")
+	if err != nil {
+		return nil, err
+	}
 
 	login := &auth.LoginHandler{
 		Store:    store,
@@ -57,6 +61,11 @@ func New(
 		RC:       rc,
 	}
 
+	sys := &handlers.SystemHandler{
+		RC:       rc,
+		Template: fwrTmpl,
+	}
+
 	mux := http.NewServeMux()
 
 	// Auth routes (public).
@@ -72,6 +81,10 @@ func New(
 	mux.HandleFunc("GET /{$}", dash.Index)
 	mux.HandleFunc("GET /firewall", fw.Overview)
 	mux.HandleFunc("GET /keystore", ks.Overview)
+	mux.HandleFunc("GET /firmware", sys.Firmware)
+	mux.HandleFunc("POST /firmware/install", sys.FirmwareInstall)
+	mux.HandleFunc("POST /reboot", sys.Reboot)
+	mux.HandleFunc("GET /config", sys.DownloadConfig)
 
 	return authMiddleware(store, mux), nil
 }

@@ -1,10 +1,12 @@
 package restconf
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -78,6 +80,89 @@ func (c *Client) Get(ctx context.Context, path string, target any) error {
 	}
 
 	return json.NewDecoder(resp.Body).Decode(target)
+}
+
+// Post sends a POST request to a RESTCONF RPC endpoint.
+// Used for operations like system-restart that return no body.
+func (c *Client) Post(ctx context.Context, path string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Accept", "application/yang-data+json")
+
+	creds := CredentialsFromContext(ctx)
+	req.SetBasicAuth(creds.Username, creds.Password)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("restconf request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return parseError(resp)
+	}
+
+	return nil
+}
+
+// PostJSON sends a POST request with a JSON body to a RESTCONF RPC endpoint.
+// Used for RPCs that require input parameters (e.g. install-bundle).
+func (c *Client) PostJSON(ctx context.Context, path string, body any) error {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(body); err != nil {
+		return fmt.Errorf("encoding request body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, &buf)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/yang-data+json")
+	req.Header.Set("Accept", "application/yang-data+json")
+
+	creds := CredentialsFromContext(ctx)
+	req.SetBasicAuth(creds.Username, creds.Password)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("restconf request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return parseError(resp)
+	}
+
+	return nil
+}
+
+// GetRaw fetches a RESTCONF resource and returns the raw JSON bytes.
+func (c *Client) GetRaw(ctx context.Context, path string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Accept", "application/yang-data+json")
+
+	creds := CredentialsFromContext(ctx)
+	req.SetBasicAuth(creds.Username, creds.Password)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("restconf request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, parseError(resp)
+	}
+
+	return io.ReadAll(resp.Body)
 }
 
 // CheckAuth verifies that the given credentials are accepted by rousette.

@@ -25,8 +25,20 @@
          hx-push-url="true"
          class="nav-link">Keystore</a>
     </li>
+    <li>
+      <a href="/firmware"
+         hx-get="/firmware"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link">Firmware</a>
+    </li>
   </ul>
   <div class="sidebar-footer">
+    <a href="/config" class="btn btn-sidebar-action" hx-boost="false" download>Download Config</a>
+    <button class="btn btn-sidebar-action btn-danger-hover"
+            hx-post="/reboot"
+            hx-confirm="Reboot the device?"
+            hx-on::after-request="if(event.detail.successful) window.location='/login'">Reboot</button>
     <form method="POST" action="/logout">
       <button type="submit" class="btn btn-logout">Logout</button>
     </form>
