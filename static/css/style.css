@@ -317,6 +317,115 @@ html, body {
   font-size: 0.8rem;
 }
 
+/* Interface detail page */
+.iface-detail-header {
+  margin-bottom: 1.5rem;
+}
+
+.iface-detail-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.back-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.info-card h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #6b7280;
+}
+
+.counters-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.counters-table th,
+.counters-table td {
+  padding: 0.35rem 0.75rem;
+  text-align: right;
+}
+
+.counters-table th {
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid var(--border);
+}
+
+.counters-table td:first-child,
+.counters-table th:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+
+.counters-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.counters-table td {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.eth-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  font-size: 0.85rem;
+}
+
+.eth-stats-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.eth-stats dt {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+  color: #6b7280;
+}
+
+.eth-stats dd {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+  text-align: right;
+}
+
+.iface-name a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.iface-name a:hover {
+  text-decoration: underline;
+}
+
+.signal-excellent { color: #16a34a; font-weight: 600; }
+.signal-good { color: #65a30d; font-weight: 600; }
+.signal-poor { color: #ca8a04; font-weight: 600; }
+.signal-bad { color: #dc2626; font-weight: 600; }
+
+.wg-peer {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.wg-peer:last-child {
+  border-bottom: none;
+}
+
 /* Zone Matrix */
 .matrix-wrap {
   overflow-x: auto;

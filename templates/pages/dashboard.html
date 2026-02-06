@@ -56,36 +56,6 @@
   {{end}}
 </section>
 
-{{if .Interfaces}}
-<section class="info-card">
-  <h2>Interfaces</h2>
-  <table class="disk-table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Status</th>
-        <th>MAC</th>
-        <th>Address</th>
-        <th>Detail</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{range .Interfaces}}
-      <tr>
-        <td class="iface-name">{{if .Indent}}<span class="tree-pipe">{{.Indent}}</span>{{end}}{{.Name}}</td>
-        <td>{{.Type}}</td>
-        <td><span class="status-dot {{if .StatusUp}}status-up{{else}}status-down{{end}}"></span>{{.Status}}</td>
-        <td>{{.PhysAddr}}</td>
-        <td>{{range $i, $a := .Addresses}}{{if $i}}<br>{{end}}{{$a.Address}}{{if $a.Origin}} <span class="addr-origin">({{$a.Origin}})</span>{{end}}{{end}}</td>
-        <td>{{.Detail}}</td>
-      </tr>
-      {{end}}
-    </tbody>
-  </table>
-</section>
-{{end}}
-
 {{if .Disks}}
 <section class="info-card">
   <h2>Disk Usage</h2>

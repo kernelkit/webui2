@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kernelkit/infix-webui/internal/restconf"
@@ -139,70 +141,6 @@ type filesystemFS struct {
 	Available  yangInt64 `json:"available"`
 }
 
-// RESTCONF JSON structures for ietf-interfaces:interfaces.
-
-type interfacesWrapper struct {
-	Interfaces struct {
-		Interface []ifaceJSON `json:"interface"`
-	} `json:"ietf-interfaces:interfaces"`
-}
-
-type ifaceJSON struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	OperStatus  string `json:"oper-status"`
-	PhysAddress string `json:"phys-address"`
-	IfIndex     int    `json:"if-index"`
-	IPv4        *ipCfg `json:"ietf-ip:ipv4"`
-	IPv6        *ipCfg `json:"ietf-ip:ipv6"`
-	Statistics  *struct {
-		InOctets  yangInt64 `json:"in-octets"`
-		OutOctets yangInt64 `json:"out-octets"`
-	} `json:"statistics"`
-	Ethernet *struct {
-		Speed  string `json:"speed"`
-		Duplex string `json:"duplex"`
-	} `json:"ieee802-ethernet-interface:ethernet"`
-	BridgePort *bridgePortJSON `json:"infix-interfaces:bridge-port"`
-	WiFi       *wifiJSON       `json:"infix-interfaces:wifi"`
-}
-
-type bridgePortJSON struct {
-	Bridge string `json:"bridge"`
-	STP    *struct {
-		CIST *struct {
-			State string `json:"state"`
-		} `json:"cist"`
-	} `json:"stp"`
-}
-
-type wifiJSON struct {
-	AccessPoint *wifiAPJSON      `json:"access-point"`
-	Station     *wifiStationJSON `json:"station"`
-}
-
-type wifiAPJSON struct {
-	SSID     string `json:"ssid"`
-	Stations struct {
-		Station []struct{} `json:"station"`
-	} `json:"stations"`
-}
-
-type wifiStationJSON struct {
-	SSID           string `json:"ssid"`
-	SignalStrength *int   `json:"signal-strength"`
-}
-
-type ipCfg struct {
-	Address []ipAddr `json:"address"`
-}
-
-type ipAddr struct {
-	IP           string    `json:"ip"`
-	PrefixLength yangInt64 `json:"prefix-length"`
-	Origin       string    `json:"origin"`
-}
-
 // RESTCONF JSON structures for ietf-hardware:hardware.
 
 type hardwareWrapper struct {
@@ -250,7 +188,6 @@ type dashboardData struct {
 	Load5      string
 	Load15     string
 	Disks      []diskEntry
-	Interfaces []ifaceEntry
 	Board      boardInfo
 	Sensors    []sensorEntry
 	Error      string
@@ -278,24 +215,6 @@ type diskEntry struct {
 	Percent   int
 }
 
-type ifaceEntry struct {
-	Indent    string // tree prefix for bridge/LAG members
-	Name      string
-	Type      string
-	Status    string
-	StatusUp  bool
-	PhysAddr  string
-	Addresses []addrEntry
-	Detail    string // extra info: wifi AP, wireguard peers, etc.
-	RxBytes   string
-	TxBytes   string
-}
-
-type addrEntry struct {
-	Address string
-	Origin  string
-}
-
 // DashboardHandler serves the main dashboard page.
 type DashboardHandler struct {
 	Template *template.Template
@@ -307,9 +226,39 @@ func (h *DashboardHandler) Index(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
 	data := dashboardData{Username: creds.Username}
 
-	var state systemStateWrapper
-	if err := h.RC.Get(r.Context(), "/data/ietf-system:system-state", &state); err != nil {
-		log.Printf("restconf system-state: %v", err)
+	// Detach from the request context so that RESTCONF calls survive
+	// browser connection resets (common during login redirects).
+	// The RESTCONF client's own 10 s timeout still bounds each call.
+	ctx := context.WithoutCancel(r.Context())
+	var (
+		state   systemStateWrapper
+		hw      hardwareWrapper
+		sysConf struct {
+			System struct {
+				Hostname string `json:"hostname"`
+			} `json:"ietf-system:system"`
+		}
+		stateErr, hwErr, confErr error
+		wg                       sync.WaitGroup
+	)
+
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		stateErr = h.RC.Get(ctx, "/data/ietf-system:system-state", &state)
+	}()
+	go func() {
+		defer wg.Done()
+		hwErr = h.RC.Get(ctx, "/data/ietf-hardware:hardware", &hw)
+	}()
+	go func() {
+		defer wg.Done()
+		confErr = h.RC.Get(ctx, "/data/ietf-system:system", &sysConf)
+	}()
+	wg.Wait()
+
+	if stateErr != nil {
+		log.Printf("restconf system-state: %v", stateErr)
 		data.Error = "Could not fetch system information"
 	} else {
 		ss := state.SystemState
@@ -349,18 +298,8 @@ func (h *DashboardHandler) Index(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Fetch interface status.
-	var ifaces interfacesWrapper
-	if err := h.RC.Get(r.Context(), "/data/ietf-interfaces:interfaces", &ifaces); err != nil {
-		log.Printf("restconf interfaces: %v", err)
-	} else {
-		data.Interfaces = buildIfaceList(ifaces.Interfaces.Interface)
-	}
-
-	// Fetch hardware components (board info + sensors).
-	var hw hardwareWrapper
-	if err := h.RC.Get(r.Context(), "/data/ietf-hardware:hardware", &hw); err != nil {
-		log.Printf("restconf hardware: %v", err)
+	if hwErr != nil {
+		log.Printf("restconf hardware: %v", hwErr)
 	} else {
 		for _, c := range hw.Hardware.Component {
 			class := shortClass(c.Class)
@@ -383,13 +322,9 @@ func (h *DashboardHandler) Index(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Also fetch hostname from config.
-	var sysConf struct {
-		System struct {
-			Hostname string `json:"hostname"`
-		} `json:"ietf-system:system"`
-	}
-	if err := h.RC.Get(r.Context(), "/data/ietf-system:system", &sysConf); err == nil {
+	if confErr != nil {
+		log.Printf("restconf system config: %v", confErr)
+	} else {
 		data.Hostname = sysConf.System.Hostname
 	}
 
@@ -471,141 +406,6 @@ func formatSensor(valueType string, value int64, scale string) string {
 	default:
 		return fmt.Sprintf("%.1f", v)
 	}
-}
-
-// prettyIfType converts a YANG interface type identity to the display
-// name used by the Infix CLI (cli_pretty).
-func prettyIfType(full string) string {
-	// Map of YANG identity suffixes to cli_pretty display names.
-	pretty := map[string]string{
-		// infix-if-type identities
-		"bridge":    "bridge",
-		"dummy":     "dummy",
-		"ethernet":  "ethernet",
-		"gre":       "gre",
-		"gretap":    "gretap",
-		"vxlan":     "vxlan",
-		"wireguard": "wireguard",
-		"lag":       "lag",
-		"loopback":  "loopback",
-		"veth":      "veth",
-		"vlan":      "vlan",
-		"wifi":      "wifi",
-		"other":     "other",
-		// iana-if-type identities
-		"ethernetCsmacd":  "ethernet",
-		"softwareLoopback": "loopback",
-		"l2vlan":           "vlan",
-		"ieee8023adLag":    "lag",
-		"ieee80211":        "wifi",
-		"ilan":             "veth",
-	}
-
-	if i := strings.LastIndex(full, ":"); i >= 0 {
-		full = full[i+1:]
-	}
-	if name, ok := pretty[full]; ok {
-		return name
-	}
-	return full
-}
-
-// buildIfaceList converts raw RESTCONF interface data into a flat,
-// hierarchically ordered display list matching the cli_pretty style.
-// Bridge members are grouped under their parent with tree indicators.
-func buildIfaceList(raw []ifaceJSON) []ifaceEntry {
-	// Index by name and group bridge children.
-	byName := map[string]*ifaceJSON{}
-	children := map[string][]string{} // bridge name → member names
-	childSet := map[string]bool{}
-
-	for i := range raw {
-		iface := &raw[i]
-		byName[iface.Name] = iface
-		if iface.BridgePort != nil && iface.BridgePort.Bridge != "" {
-			parent := iface.BridgePort.Bridge
-			children[parent] = append(children[parent], iface.Name)
-			childSet[iface.Name] = true
-		}
-	}
-
-	var result []ifaceEntry
-
-	for _, iface := range raw {
-		if childSet[iface.Name] {
-			continue // rendered under its parent
-		}
-
-		result = append(result, makeIfaceEntry(iface, ""))
-
-		// Append bridge members with tree prefixes.
-		members := children[iface.Name]
-		for i, childName := range members {
-			child, ok := byName[childName]
-			if !ok {
-				continue
-			}
-			prefix := "\u251c\u00a0" // ├
-			if i == len(members)-1 {
-				prefix = "\u2514\u00a0" // └
-			}
-			e := makeIfaceEntry(*child, prefix)
-			// Show STP state for bridge members.
-			if child.BridgePort != nil && child.BridgePort.STP != nil &&
-				child.BridgePort.STP.CIST != nil && child.BridgePort.STP.CIST.State != "" {
-				e.Status = child.BridgePort.STP.CIST.State
-				e.StatusUp = e.Status == "forwarding"
-			}
-			result = append(result, e)
-		}
-	}
-
-	return result
-}
-
-func makeIfaceEntry(iface ifaceJSON, indent string) ifaceEntry {
-	e := ifaceEntry{
-		Indent:   indent,
-		Name:     iface.Name,
-		Type:     prettyIfType(iface.Type),
-		Status:   iface.OperStatus,
-		StatusUp: iface.OperStatus == "up",
-		PhysAddr: iface.PhysAddress,
-	}
-
-	if iface.Statistics != nil {
-		e.RxBytes = humanBytes(int64(iface.Statistics.InOctets))
-		e.TxBytes = humanBytes(int64(iface.Statistics.OutOctets))
-	}
-
-	if iface.IPv4 != nil {
-		for _, a := range iface.IPv4.Address {
-			e.Addresses = append(e.Addresses, addrEntry{
-				Address: fmt.Sprintf("%s/%d", a.IP, int(a.PrefixLength)),
-				Origin:  a.Origin,
-			})
-		}
-	}
-	if iface.IPv6 != nil {
-		for _, a := range iface.IPv6.Address {
-			e.Addresses = append(e.Addresses, addrEntry{
-				Address: fmt.Sprintf("%s/%d", a.IP, int(a.PrefixLength)),
-				Origin:  a.Origin,
-			})
-		}
-	}
-
-	// WiFi detail string matching cli_pretty.
-	if iface.WiFi != nil {
-		if ap := iface.WiFi.AccessPoint; ap != nil {
-			n := len(ap.Stations.Station)
-			e.Detail = fmt.Sprintf("AP, ssid: %s, stations: %d", ap.SSID, n)
-		} else if st := iface.WiFi.Station; st != nil {
-			e.Detail = fmt.Sprintf("Station, ssid: %s", st.SSID)
-		}
-	}
-
-	return e
 }
 
 // humanBytes converts bytes to a human-readable string (B, KiB, MiB, GiB, TiB).

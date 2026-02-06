@@ -35,6 +35,18 @@ func New(
 	if err != nil {
 		return nil, err
 	}
+	ifTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/interfaces.html")
+	if err != nil {
+		return nil, err
+	}
+	ifDetailTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/iface-detail.html", "fragments/iface-counters.html")
+	if err != nil {
+		return nil, err
+	}
+	ifCountersTmpl, err := template.ParseFS(templateFS, "fragments/iface-counters.html")
+	if err != nil {
+		return nil, err
+	}
 	fwrTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/firmware.html")
 	if err != nil {
 		return nil, err
@@ -61,6 +73,13 @@ func New(
 		RC:       rc,
 	}
 
+	iface := &handlers.InterfacesHandler{
+		Template:         ifTmpl,
+		DetailTemplate:   ifDetailTmpl,
+		CountersTemplate: ifCountersTmpl,
+		RC:               rc,
+	}
+
 	sys := &handlers.SystemHandler{
 		RC:       rc,
 		Template: fwrTmpl,
@@ -79,6 +98,9 @@ func New(
 
 	// Authenticated routes.
 	mux.HandleFunc("GET /{$}", dash.Index)
+	mux.HandleFunc("GET /interfaces", iface.Overview)
+	mux.HandleFunc("GET /interfaces/{name}", iface.Detail)
+	mux.HandleFunc("GET /interfaces/{name}/counters", iface.Counters)
 	mux.HandleFunc("GET /firewall", fw.Overview)
 	mux.HandleFunc("GET /keystore", ks.Overview)
 	mux.HandleFunc("GET /firmware", sys.Firmware)
