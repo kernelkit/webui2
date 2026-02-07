@@ -45,7 +45,8 @@
     <button class="btn btn-sidebar-action btn-danger-hover"
             hx-post="/reboot"
             hx-confirm="Reboot the device?"
-            hx-on::after-request="if(event.detail.successful) window.location='/login'">Reboot</button>
+            hx-target="#content"
+            hx-swap="innerHTML">Reboot</button>
     <form method="POST" action="/logout">
       <button type="submit" class="btn btn-logout">Logout</button>
     </form>

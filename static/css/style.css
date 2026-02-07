@@ -579,3 +579,38 @@ html, body {
   color: #6b7280;
   margin-top: 0.4rem;
 }
+
+/* Reboot spinner */
+.reboot-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.reboot-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.reboot-message {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.reboot-status {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}

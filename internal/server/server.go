@@ -106,6 +106,7 @@ func New(
 	mux.HandleFunc("GET /firmware", sys.Firmware)
 	mux.HandleFunc("POST /firmware/install", sys.FirmwareInstall)
 	mux.HandleFunc("POST /reboot", sys.Reboot)
+	mux.HandleFunc("GET /device-status", sys.DeviceStatus)
 	mux.HandleFunc("GET /config", sys.DownloadConfig)
 
 	return authMiddleware(store, mux), nil

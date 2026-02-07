@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -15,7 +15,20 @@ type SystemHandler struct {
 	Template *template.Template // firmware page template
 }
 
-// Reboot triggers a device restart via the ietf-system:system-restart RPC.
+// DeviceStatus returns 200 if the RESTCONF device is reachable, 502 otherwise.
+// Used by the reboot spinner to detect when the device goes down and comes back.
+func (h *SystemHandler) DeviceStatus(w http.ResponseWriter, r *http.Request) {
+	var target struct{}
+	err := h.RC.Get(r.Context(), "/data/ietf-system:system-state/platform", &target)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// Reboot triggers a device restart via the ietf-system:system-restart RPC
+// and returns a spinner fragment that polls until the device is back.
 func (h *SystemHandler) Reboot(w http.ResponseWriter, r *http.Request) {
 	err := h.RC.Post(r.Context(), "/operations/ietf-system:system-restart")
 	if err != nil {
@@ -24,9 +37,62 @@ func (h *SystemHandler) Reboot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, rebootSpinnerHTML)
 }
+
+const rebootSpinnerHTML = `<div class="reboot-overlay">
+  <div class="reboot-spinner"></div>
+  <p class="reboot-message">Rebooting&hellip;</p>
+  <p class="reboot-status" id="reboot-status">Waiting for device to shut down&hellip;</p>
+</div>
+<script>
+(function() {
+  var timeout = 120000;
+  var interval = 2000;
+  var returnTo = window.location.pathname + window.location.search;
+  var start = Date.now();
+  var status = document.getElementById('reboot-status');
+
+  function waitDown() {
+    if (Date.now() - start > timeout) {
+      status.textContent = 'Timeout — device did not shut down within 2 minutes.';
+      status.style.color = '#dc2626';
+      return;
+    }
+    fetch('/device-status').then(function(r) {
+      if (r.ok) {
+        setTimeout(waitDown, interval);
+      } else {
+        status.textContent = 'Device is down, waiting for it to come back\u2026';
+        setTimeout(waitUp, interval);
+      }
+    }).catch(function() {
+      status.textContent = 'Device is down, waiting for it to come back\u2026';
+      setTimeout(waitUp, interval);
+    });
+  }
+
+  function waitUp() {
+    if (Date.now() - start > timeout) {
+      status.textContent = 'Timeout — device did not respond within 2 minutes.';
+      status.style.color = '#dc2626';
+      return;
+    }
+    fetch('/device-status').then(function(r) {
+      if (r.ok) {
+        window.location = returnTo || '/';
+      } else {
+        setTimeout(waitUp, interval);
+      }
+    }).catch(function() {
+      setTimeout(waitUp, interval);
+    });
+  }
+
+  setTimeout(waitDown, interval);
+})();
+</script>`
 
 // DownloadConfig serves the startup datastore as a JSON file download.
 func (h *SystemHandler) DownloadConfig(w http.ResponseWriter, r *http.Request) {

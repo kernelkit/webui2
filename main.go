@@ -27,9 +27,10 @@ func main() {
 
 	listen := flag.String("listen", ":8080", "address to listen on")
 	restconfURL := flag.String("restconf", defaultRC, "RESTCONF base URL")
+	sessionKey := flag.String("session-key", "/var/lib/misc/webui-session.key", "path to persistent session key file")
 	flag.Parse()
 
-	store, err := auth.NewSessionStore()
+	store, err := auth.NewSessionStore(*sessionKey)
 	if err != nil {
 		log.Fatalf("session store: %v", err)
 	}

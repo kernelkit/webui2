@@ -5,42 +5,39 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
-	"sync"
+	"os"
+	"path/filepath"
 	"time"
 )
 
-const (
-	tokenBytes      = 32 // 256-bit session token
-	idleTimeout     = 30 * time.Minute
-	absoluteTimeout = 8 * time.Hour
-	cleanupInterval = 1 * time.Minute
-)
+const absoluteTimeout = 8 * time.Hour
 
-// Session holds per-user state keyed by session token.
-type Session struct {
-	Username      string
-	EncryptedPass []byte
-	CreatedAt     time.Time
-	LastAccess    time.Time
+// tokenPayload is the JSON structure sealed inside each cookie value.
+type tokenPayload struct {
+	Username  string `json:"u"`
+	Password  string `json:"p"`
+	CreatedAt int64  `json:"t"` // unix seconds
 }
 
-// SessionStore is an in-memory, mutex-protected map of token → Session.
-// A random AES-256-GCM key is generated at construction time; it never
-// leaves process memory and is lost on restart (invalidating all sessions).
+// SessionStore issues and validates stateless encrypted tokens.
+// The cookie value is a base64url-encoded AES-256-GCM sealed blob
+// containing the user's credentials and a creation timestamp.
+// No server-side session map is needed — only the AES key must
+// persist across restarts.
 type SessionStore struct {
-	mu       sync.RWMutex
-	sessions map[string]*Session
-	aead     cipher.AEAD
+	aead cipher.AEAD
 }
 
-// NewSessionStore creates a store with a random encryption key and
-// starts a background goroutine that removes expired sessions.
-func NewSessionStore() (*SessionStore, error) {
-	var key [32]byte
-	if _, err := io.ReadFull(rand.Reader, key[:]); err != nil {
-		return nil, fmt.Errorf("generate session key: %w", err)
+// NewSessionStore creates a store.  If keyFile is non-empty, the AES
+// key is read from that path (or generated and written there on first
+// run).  If keyFile is empty, a random ephemeral key is used.
+func NewSessionStore(keyFile string) (*SessionStore, error) {
+	key, err := loadOrCreateKey(keyFile)
+	if err != nil {
+		return nil, err
 	}
 
 	block, err := aes.NewCipher(key[:])
@@ -52,112 +49,87 @@ func NewSessionStore() (*SessionStore, error) {
 		return nil, err
 	}
 
-	s := &SessionStore{
-		sessions: make(map[string]*Session),
-		aead:     aead,
-	}
-	go s.cleanup()
-	return s, nil
+	return &SessionStore{aead: aead}, nil
 }
 
-// Create generates a new session after successful authentication.
-// It returns the opaque session token to be stored in a cookie.
+// Create returns an encrypted token carrying the user's credentials.
 func (s *SessionStore) Create(username, password string) (string, error) {
-	token, err := generateToken()
+	payload, err := json.Marshal(tokenPayload{
+		Username:  username,
+		Password:  password,
+		CreatedAt: time.Now().Unix(),
+	})
 	if err != nil {
 		return "", err
 	}
 
-	encrypted, err := s.encrypt([]byte(password))
-	if err != nil {
-		return "", err
-	}
-
-	now := time.Now()
-	s.mu.Lock()
-	s.sessions[token] = &Session{
-		Username:      username,
-		EncryptedPass: encrypted,
-		CreatedAt:     now,
-		LastAccess:    now,
-	}
-	s.mu.Unlock()
-
-	return token, nil
-}
-
-// Lookup validates a token and returns the associated credentials.
-// It also implements sliding and absolute expiry.
-func (s *SessionStore) Lookup(token string) (username, password string, ok bool) {
-	s.mu.RLock()
-	sess, exists := s.sessions[token]
-	s.mu.RUnlock()
-
-	if !exists {
-		return "", "", false
-	}
-
-	now := time.Now()
-	if now.Sub(sess.LastAccess) > idleTimeout || now.Sub(sess.CreatedAt) > absoluteTimeout {
-		s.Delete(token)
-		return "", "", false
-	}
-
-	s.mu.Lock()
-	sess.LastAccess = now
-	s.mu.Unlock()
-
-	pass, err := s.decrypt(sess.EncryptedPass)
-	if err != nil {
-		return "", "", false
-	}
-
-	return sess.Username, string(pass), true
-}
-
-// Delete removes a session (logout or expiry).
-func (s *SessionStore) Delete(token string) {
-	s.mu.Lock()
-	delete(s.sessions, token)
-	s.mu.Unlock()
-}
-
-// cleanup runs in its own goroutine and periodically removes expired sessions.
-func (s *SessionStore) cleanup() {
-	ticker := time.NewTicker(cleanupInterval)
-	defer ticker.Stop()
-	for range ticker.C {
-		now := time.Now()
-		s.mu.Lock()
-		for token, sess := range s.sessions {
-			if now.Sub(sess.LastAccess) > idleTimeout || now.Sub(sess.CreatedAt) > absoluteTimeout {
-				delete(s.sessions, token)
-			}
-		}
-		s.mu.Unlock()
-	}
-}
-
-func generateToken() (string, error) {
-	b := make([]byte, tokenBytes)
-	if _, err := io.ReadFull(rand.Reader, b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
-}
-
-func (s *SessionStore) encrypt(plaintext []byte) ([]byte, error) {
 	nonce := make([]byte, s.aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
+		return "", err
 	}
-	return s.aead.Seal(nonce, nonce, plaintext, nil), nil
+
+	sealed := s.aead.Seal(nonce, nonce, payload, nil)
+	return base64.RawURLEncoding.EncodeToString(sealed), nil
 }
 
-func (s *SessionStore) decrypt(ciphertext []byte) ([]byte, error) {
-	ns := s.aead.NonceSize()
-	if len(ciphertext) < ns {
-		return nil, fmt.Errorf("ciphertext too short")
+// Lookup decrypts a token and returns the credentials if valid.
+func (s *SessionStore) Lookup(token string) (username, password string, ok bool) {
+	raw, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return "", "", false
 	}
-	return s.aead.Open(nil, ciphertext[:ns], ciphertext[ns:], nil)
+
+	ns := s.aead.NonceSize()
+	if len(raw) < ns {
+		return "", "", false
+	}
+
+	plaintext, err := s.aead.Open(nil, raw[:ns], raw[ns:], nil)
+	if err != nil {
+		return "", "", false
+	}
+
+	var p tokenPayload
+	if err := json.Unmarshal(plaintext, &p); err != nil {
+		return "", "", false
+	}
+
+	if time.Since(time.Unix(p.CreatedAt, 0)) > absoluteTimeout {
+		return "", "", false
+	}
+
+	return p.Username, p.Password, true
+}
+
+// Delete is a no-op for stateless tokens (the cookie is cleared by
+// the caller), but kept to satisfy the existing logout flow.
+func (s *SessionStore) Delete(token string) {}
+
+// loadOrCreateKey returns a 32-byte AES key.  When path is non-empty
+// the key is persisted so sessions survive restarts.
+func loadOrCreateKey(path string) ([32]byte, error) {
+	var key [32]byte
+
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err == nil && len(data) == 32 {
+			copy(key[:], data)
+			return key, nil
+		}
+	}
+
+	if _, err := io.ReadFull(rand.Reader, key[:]); err != nil {
+		return key, fmt.Errorf("generate session key: %w", err)
+	}
+
+	if path != "" {
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			return key, fmt.Errorf("create key directory: %w", err)
+		}
+		if err := os.WriteFile(path, key[:], 0600); err != nil {
+			return key, fmt.Errorf("write session key: %w", err)
+		}
+	}
+
+	return key, nil
 }
