@@ -80,6 +80,42 @@
 </section>
 {{end}}
 
+{{if .SurveyChart}}
+<section class="info-card">
+  <h2>Channel Survey</h2>
+  <p class="survey-hint">Channel utilization (% of active time) with noise floor overlay</p>
+  {{.SurveyChart}}
+</section>
+{{end}}
+
+{{if .ScanResults}}
+<section class="info-card">
+  <h2>Scan Results</h2>
+  <table class="disk-table">
+    <thead>
+      <tr>
+        <th>SSID</th>
+        <th>BSSID</th>
+        <th>Signal</th>
+        <th>Channel</th>
+        <th>Security</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .ScanResults}}
+      <tr>
+        <td>{{if .SSID}}{{.SSID}}{{else}}<em>Hidden</em>{{end}}</td>
+        <td>{{.BSSID}}</td>
+        <td>{{if .Signal}}<span class="signal-{{.SignalCSS}}">{{.Signal}}</span>{{end}}</td>
+        <td>{{.Channel}}</td>
+        <td>{{.Encryption}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+
 {{if .WGPeers}}
 <section class="info-card">
   <h2>WireGuard Peers</h2>

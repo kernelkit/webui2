@@ -614,3 +614,10 @@ html, body {
   color: #6b7280;
   margin-top: 0.5rem;
 }
+
+/* Channel survey chart */
+.survey-hint {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-bottom: 0.75rem;
+}

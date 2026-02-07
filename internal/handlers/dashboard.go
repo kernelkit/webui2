@@ -159,6 +159,7 @@ type hwComponentJSON struct {
 	SerialNum   string `json:"serial-num"`
 	HardwareRev string `json:"hardware-rev"`
 	PhysAddress string `json:"infix-hardware:phys-address"`
+	WiFiRadio *wifiRadioJSON `json:"infix-hardware:wifi-radio"`
 	SensorData  *struct {
 		ValueType  string    `json:"value-type"`
 		Value      yangInt64 `json:"value"`

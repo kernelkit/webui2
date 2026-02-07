@@ -111,7 +111,9 @@ func (h *SystemHandler) DownloadConfig(w http.ResponseWriter, r *http.Request) {
 // RESTCONF JSON structures for infix-system:software state.
 
 type fwSoftwareWrapper struct {
-	Software fwSoftwareState `json:"infix-system:software"`
+	SystemState struct {
+		Software fwSoftwareState `json:"infix-system:software"`
+	} `json:"ietf-system:system-state"`
 }
 
 type fwSoftwareState struct {
@@ -181,22 +183,22 @@ func (h *SystemHandler) Firmware(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sw fwSoftwareWrapper
-	err := h.RC.Get(r.Context(), "/data/ietf-system:system-state/infix-system:software", &sw)
+	err := h.RC.Get(r.Context(), "/data/ietf-system:system-state", &sw)
 	if err != nil {
 		log.Printf("restconf firmware: %v", err)
 		data.Error = "Could not fetch firmware status"
 	} else {
-		for _, s := range sw.Software.Slots {
+		for _, s := range sw.SystemState.Software.Slots {
 			data.Slots = append(data.Slots, slotEntry{
 				Name:     s.Name,
 				BootName: s.BootName,
 				State:    s.State,
 				Version:  s.Bundle.Version,
-				Booted:   s.Name == sw.Software.Booted,
+				Booted:   s.Name == sw.SystemState.Software.Booted,
 			})
 		}
 
-		inst := sw.Software.Installer
+		inst := sw.SystemState.Software.Installer
 		data.Installer = &installerEntry{
 			Operation:  inst.Operation,
 			Percentage: inst.Progress.Percentage,

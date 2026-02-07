@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 
 	"github.com/kernelkit/infix-webui/internal/restconf"
 )
@@ -43,6 +46,7 @@ type bridgePortJSON struct {
 }
 
 type wifiJSON struct {
+	Radio       string           `json:"radio"`
 	AccessPoint *wifiAPJSON      `json:"access-point"`
 	Station     *wifiStationJSON `json:"station"`
 }
@@ -67,8 +71,39 @@ type wifiStaJSON struct {
 }
 
 type wifiStationJSON struct {
-	SSID           string `json:"ssid"`
-	SignalStrength *int   `json:"signal-strength"`
+	SSID           string               `json:"ssid"`
+	SignalStrength *int                 `json:"signal-strength"`
+	RxSpeed        yangInt64            `json:"rx-speed"`
+	TxSpeed        yangInt64            `json:"tx-speed"`
+	ScanResults    []wifiScanResultJSON `json:"scan-results"`
+}
+
+type wifiScanResultJSON struct {
+	SSID           string   `json:"ssid"`
+	BSSID          string   `json:"bssid"`
+	SignalStrength *int     `json:"signal-strength"`
+	Channel        int      `json:"channel"`
+	Encryption     []string `json:"encryption"`
+}
+
+// WiFi radio survey RESTCONF structures (from ietf-hardware:hardware).
+
+type wifiRadioJSON struct {
+	Survey *wifiSurveyJSON `json:"survey"`
+}
+
+type wifiSurveyJSON struct {
+	Channel []surveyChanJSON `json:"channel"`
+}
+
+type surveyChanJSON struct {
+	Frequency    int      `json:"frequency"`
+	InUse        yangBool `json:"in-use"`
+	Noise        int      `json:"noise"`
+	ActiveTime   int      `json:"active-time"`
+	BusyTime     int      `json:"busy-time"`
+	ReceiveTime  int      `json:"receive-time"`
+	TransmitTime int      `json:"transmit-time"`
 }
 
 type wireGuardJSON struct {
@@ -360,6 +395,8 @@ type ifaceDetailData struct {
 	EthFrameStats []kvEntry
 	WGPeers       []wgPeerEntry
 	WiFiStations  []wifiStaEntry
+	ScanResults   []wifiScanEntry
+	SurveyChart   template.HTML
 }
 
 type ifaceCounters struct {
@@ -403,6 +440,15 @@ type wifiStaEntry struct {
 	TxBytes   string
 	RxSpeed   string
 	TxSpeed   string
+}
+
+type wifiScanEntry struct {
+	SSID       string
+	BSSID      string
+	Signal     string
+	SignalCSS  string
+	Channel    string
+	Encryption string
 }
 
 // fetchInterface retrieves a single interface by name from RESTCONF.
@@ -478,7 +524,14 @@ func buildDetailData(username string, iface *ifaceJSON) ifaceDetailData {
 				d.WiFiStations = append(d.WiFiStations, buildWifiStaEntry(s))
 			}
 		} else if st := iface.WiFi.Station; st != nil {
-			d.Detail = fmt.Sprintf("Station, ssid: %s", st.SSID)
+			detail := fmt.Sprintf("Station, ssid: %s", st.SSID)
+			if st.SignalStrength != nil {
+				detail += fmt.Sprintf(", signal: %d dBm", *st.SignalStrength)
+			}
+			d.Detail = detail
+			for _, sr := range st.ScanResults {
+				d.ScanResults = append(d.ScanResults, buildWifiScanEntry(sr))
+			}
 		}
 	}
 
@@ -588,6 +641,34 @@ func buildWifiStaEntry(s wifiStaJSON) wifiStaEntry {
 	return e
 }
 
+func buildWifiScanEntry(sr wifiScanResultJSON) wifiScanEntry {
+	e := wifiScanEntry{
+		SSID:    sr.SSID,
+		BSSID:   sr.BSSID,
+		Channel: fmt.Sprintf("%d", sr.Channel),
+	}
+	if len(sr.Encryption) > 0 {
+		e.Encryption = strings.Join(sr.Encryption, ", ")
+	} else {
+		e.Encryption = "Open"
+	}
+	if sr.SignalStrength != nil {
+		sig := *sr.SignalStrength
+		e.Signal = fmt.Sprintf("%d dBm", sig)
+		switch {
+		case sig >= -50:
+			e.SignalCSS = "excellent"
+		case sig >= -60:
+			e.SignalCSS = "good"
+		case sig >= -70:
+			e.SignalCSS = "poor"
+		default:
+			e.SignalCSS = "bad"
+		}
+	}
+	return e
+}
+
 func formatDuration(secs int64) string {
 	if secs < 60 {
 		return fmt.Sprintf("%ds", secs)
@@ -622,14 +703,44 @@ func (h *InterfacesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	creds := restconf.CredentialsFromContext(r.Context())
 
-	iface, err := h.fetchInterface(r, name)
-	if err != nil {
-		log.Printf("restconf interface %s: %v", name, err)
+	var (
+		iface        *ifaceJSON
+		hw           hardwareWrapper
+		ifErr, hwErr error
+		wg           sync.WaitGroup
+	)
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		iface, ifErr = h.fetchInterface(r, name)
+	}()
+	go func() {
+		defer wg.Done()
+		hwErr = h.RC.Get(r.Context(), "/data/ietf-hardware:hardware", &hw)
+	}()
+	wg.Wait()
+
+	if ifErr != nil {
+		log.Printf("restconf interface %s: %v", name, ifErr)
 		http.Error(w, "Interface not found", http.StatusNotFound)
 		return
 	}
 
 	data := buildDetailData(creds.Username, iface)
+
+	// For WiFi interfaces, look for radio survey data in hardware.
+	if iface.WiFi != nil && hwErr == nil {
+		radioName := iface.WiFi.Radio
+		for _, c := range hw.Hardware.Component {
+			if c.WiFiRadio != nil && c.WiFiRadio.Survey != nil &&
+				len(c.WiFiRadio.Survey.Channel) > 0 &&
+				(radioName == "" || c.Name == radioName) {
+				data.SurveyChart = renderSurveySVG(c.WiFiRadio.Survey.Channel)
+				break
+			}
+		}
+	}
 
 	tmplName := "iface-detail.html"
 	if r.Header.Get("HX-Request") == "true" {
@@ -659,4 +770,222 @@ func (h *InterfacesHandler) Counters(w http.ResponseWriter, r *http.Request) {
 		log.Printf("template error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
+}
+
+// freqToChannel converts a WiFi center frequency (MHz) to a channel number.
+func freqToChannel(freq int) int {
+	switch {
+	case freq == 2484:
+		return 14
+	case freq >= 2412 && freq <= 2472:
+		return (freq - 2407) / 5
+	case freq >= 5180 && freq <= 5885:
+		return (freq - 5000) / 5
+	case freq >= 5955 && freq <= 7115:
+		return (freq - 5950) / 5
+	default:
+		return 0
+	}
+}
+
+// renderSurveySVG generates an inline SVG bar chart visualizing WiFi channel
+// survey data.  Each channel gets a stacked bar showing receive, transmit,
+// and other busy time as a percentage of active time.  A dashed noise-floor
+// line is overlaid with a right-side dBm axis.  The in-use channel is marked
+// with a triangle.
+func renderSurveySVG(channels []surveyChanJSON) template.HTML {
+	n := len(channels)
+	if n == 0 {
+		return ""
+	}
+
+	sorted := make([]surveyChanJSON, n)
+	copy(sorted, channels)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Frequency < sorted[j].Frequency
+	})
+
+	// Layout constants.
+	const chartH = 200
+	padL, padR, padT, padB := 44, 48, 28, 58
+
+	slotW := 600.0 / float64(n)
+	if slotW > 44 {
+		slotW = 44
+	}
+	if slotW < 16 {
+		slotW = 16
+	}
+	barW := slotW * 0.65
+	chartW := slotW * float64(n)
+	svgW := int(chartW) + padL + padR
+	svgH := chartH + padT + padB
+
+	// Noise range for right axis.
+	hasNoise := false
+	noiseMin, noiseMax := 0, 0
+	for i, ch := range sorted {
+		if ch.Noise != 0 {
+			if !hasNoise {
+				noiseMin, noiseMax = ch.Noise, ch.Noise
+				hasNoise = true
+			}
+			if ch.Noise < noiseMin {
+				noiseMin = ch.Noise
+			}
+			if ch.Noise > noiseMax {
+				noiseMax = ch.Noise
+			}
+		}
+		_ = i
+	}
+	nFloor := int(math.Floor(float64(noiseMin)/5))*5 - 5
+	nCeil := int(math.Ceil(float64(noiseMax)/5))*5 + 5
+	nRange := float64(nCeil - nFloor)
+	if nRange == 0 {
+		nRange = 10
+	}
+
+	font := `-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif`
+
+	var b strings.Builder
+
+	fmt.Fprintf(&b, `<svg viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" `+
+		`style="max-width:100%%;font-family:%s">`, svgW, svgH, font)
+
+	// Y-axis grid lines and labels (utilization %).
+	for _, pct := range []int{0, 25, 50, 75, 100} {
+		y := padT + chartH - pct*chartH/100
+		fmt.Fprintf(&b, `<line x1="%d" y1="%d" x2="%.0f" y2="%d" stroke="#e5e7eb" stroke-width="1"/>`,
+			padL, y, float64(padL)+chartW, y)
+		fmt.Fprintf(&b, `<text x="%d" y="%d" text-anchor="end" fill="#9ca3af" font-size="10">%d%%</text>`,
+			padL-4, y+4, pct)
+	}
+
+	// Right Y-axis labels (noise dBm).
+	if hasNoise {
+		nMid := (nFloor + nCeil) / 2
+		for _, db := range []int{nFloor + 5, nMid, nCeil - 5} {
+			ny := float64(padT+chartH) - float64(db-nFloor)/nRange*float64(chartH)
+			fmt.Fprintf(&b, `<text x="%.0f" y="%.0f" text-anchor="start" `+
+				`fill="#ef4444" font-size="10" opacity="0.8">%d</text>`,
+				float64(padL)+chartW+4, ny+3, db)
+		}
+	}
+
+	// Draw bars and collect noise line points.
+	var noisePts []string
+
+	for i, ch := range sorted {
+		cx := float64(padL) + float64(i)*slotW + slotW/2
+		bx := cx - barW/2
+
+		var rxPct, txPct, otherPct float64
+		if ch.ActiveTime > 0 {
+			act := float64(ch.ActiveTime)
+			rxPct = float64(ch.ReceiveTime) / act * 100
+			txPct = float64(ch.TransmitTime) / act * 100
+			otherPct = float64(ch.BusyTime)/act*100 - rxPct - txPct
+			if otherPct < 0 {
+				otherPct = 0
+			}
+			if total := rxPct + txPct + otherPct; total > 100 {
+				s := 100 / total
+				rxPct *= s
+				txPct *= s
+				otherPct *= s
+			}
+		}
+
+		baseY := float64(padT + chartH)
+
+		// Stacked: other busy (bottom), transmit (middle), receive (top).
+		if otherPct > 0.5 {
+			h := otherPct / 100 * float64(chartH)
+			fmt.Fprintf(&b, `<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#f59e0b" rx="1.5"/>`,
+				bx, baseY-h, barW, h)
+			baseY -= h
+		}
+		if txPct > 0.5 {
+			h := txPct / 100 * float64(chartH)
+			fmt.Fprintf(&b, `<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#22c55e" rx="1.5"/>`,
+				bx, baseY-h, barW, h)
+			baseY -= h
+		}
+		if rxPct > 0.5 {
+			h := rxPct / 100 * float64(chartH)
+			fmt.Fprintf(&b, `<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#3b82f6" rx="1.5"/>`,
+				bx, baseY-h, barW, h)
+		}
+
+		// In-use marker (triangle above bar).
+		if ch.InUse {
+			totalPct := rxPct + txPct + otherPct
+			topY := float64(padT+chartH) - totalPct/100*float64(chartH)
+			fmt.Fprintf(&b, `<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="#2563eb"/>`,
+				cx, topY-3, cx-4, topY-11, cx+4, topY-11)
+		}
+
+		// Channel label on X-axis.
+		chNum := freqToChannel(ch.Frequency)
+		label := fmt.Sprintf("%d", chNum)
+		if chNum == 0 {
+			label = fmt.Sprintf("%d", ch.Frequency)
+		}
+		fmt.Fprintf(&b, `<text x="%.1f" y="%d" text-anchor="middle" fill="#6b7280" font-size="10">%s</text>`,
+			cx, padT+chartH+14, label)
+
+		// Noise line point.
+		if hasNoise && ch.Noise != 0 {
+			ny := float64(padT+chartH) - float64(ch.Noise-nFloor)/nRange*float64(chartH)
+			noisePts = append(noisePts, fmt.Sprintf("%.1f,%.1f", cx, ny))
+		}
+	}
+
+	// Draw noise floor line.
+	if len(noisePts) > 1 {
+		fmt.Fprintf(&b, `<polyline points="%s" fill="none" stroke="#ef4444" `+
+			`stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7"/>`,
+			strings.Join(noisePts, " "))
+		for _, pt := range noisePts {
+			parts := strings.SplitN(pt, ",", 2)
+			fmt.Fprintf(&b, `<circle cx="%s" cy="%s" r="2.5" fill="#ef4444" opacity="0.7"/>`,
+				parts[0], parts[1])
+		}
+	}
+
+	// Legend row.
+	ly := svgH - 8
+	lx := float64(padL)
+
+	for _, item := range []struct{ color, label string }{
+		{"#3b82f6", "Rx"},
+		{"#22c55e", "Tx"},
+		{"#f59e0b", "Other"},
+	} {
+		fmt.Fprintf(&b, `<rect x="%.0f" y="%d" width="10" height="10" fill="%s" rx="1.5"/>`,
+			lx, ly-9, item.color)
+		fmt.Fprintf(&b, `<text x="%.0f" y="%d" fill="#6b7280" font-size="10">%s</text>`,
+			lx+13, ly, item.label)
+		lx += 13 + float64(len(item.label))*7 + 10
+	}
+
+	if hasNoise {
+		fmt.Fprintf(&b, `<line x1="%.0f" y1="%d" x2="%.0f" y2="%d" `+
+			`stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7"/>`,
+			lx, ly-4, lx+14, ly-4)
+		lx += 18
+		fmt.Fprintf(&b, `<text x="%.0f" y="%d" fill="#ef4444" font-size="10" opacity="0.8">Noise (dBm)</text>`,
+			lx, ly)
+		lx += 80
+	}
+
+	// In-use legend marker.
+	fmt.Fprintf(&b, `<polygon points="%.0f,%d %.0f,%d %.0f,%d" fill="#2563eb"/>`,
+		lx+5, ly-9, lx+1, ly-1, lx+9, ly-1)
+	fmt.Fprintf(&b, `<text x="%.0f" y="%d" fill="#6b7280" font-size="10">In use</text>`,
+		lx+14, ly)
+
+	b.WriteString(`</svg>`)
+	return template.HTML(b.String())
 }
