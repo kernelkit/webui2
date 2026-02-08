@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/kernelkit/infix-webui/internal/restconf"
 )
@@ -389,14 +388,19 @@ type ifaceDetailData struct {
 	Speed     string
 	Duplex    string
 	AutoNeg   string
-	Addresses     []addrEntry
-	Detail        string
-	Counters      ifaceCounters
+	Addresses        []addrEntry
+	WiFiMode         string // "Access Point" or "Station"
+	WiFiSSID         string
+	WiFiSignal       string
+	WiFiRxSpeed      string
+	WiFiTxSpeed      string
+	WiFiStationCount string // e.g. "3" for AP mode
+	WGPeerSummary    string // e.g. "3 peers (2 up)"
+	Counters         ifaceCounters
 	EthFrameStats []kvEntry
 	WGPeers       []wgPeerEntry
 	WiFiStations  []wifiStaEntry
 	ScanResults   []wifiScanEntry
-	SurveyChart   template.HTML
 }
 
 type ifaceCounters struct {
@@ -518,17 +522,24 @@ func buildDetailData(username string, iface *ifaceJSON) ifaceDetailData {
 
 	if iface.WiFi != nil {
 		if ap := iface.WiFi.AccessPoint; ap != nil {
-			n := len(ap.Stations.Station)
-			d.Detail = fmt.Sprintf("AP, ssid: %s, stations: %d", ap.SSID, n)
+			d.WiFiMode = "Access Point"
+			d.WiFiSSID = ap.SSID
+			d.WiFiStationCount = fmt.Sprintf("%d", len(ap.Stations.Station))
 			for _, s := range ap.Stations.Station {
 				d.WiFiStations = append(d.WiFiStations, buildWifiStaEntry(s))
 			}
 		} else if st := iface.WiFi.Station; st != nil {
-			detail := fmt.Sprintf("Station, ssid: %s", st.SSID)
+			d.WiFiMode = "Station"
+			d.WiFiSSID = st.SSID
 			if st.SignalStrength != nil {
-				detail += fmt.Sprintf(", signal: %d dBm", *st.SignalStrength)
+				d.WiFiSignal = fmt.Sprintf("%d dBm", *st.SignalStrength)
 			}
-			d.Detail = detail
+			if st.RxSpeed > 0 {
+				d.WiFiRxSpeed = fmt.Sprintf("%.1f Mbps", float64(st.RxSpeed)/10)
+			}
+			if st.TxSpeed > 0 {
+				d.WiFiTxSpeed = fmt.Sprintf("%.1f Mbps", float64(st.TxSpeed)/10)
+			}
 			for _, sr := range st.ScanResults {
 				d.ScanResults = append(d.ScanResults, buildWifiScanEntry(sr))
 			}
@@ -536,6 +547,8 @@ func buildDetailData(username string, iface *ifaceJSON) ifaceDetailData {
 	}
 
 	if wg := iface.WireGuard; wg != nil && wg.PeerStatus != nil {
+		total := len(wg.PeerStatus.Peer)
+		up := 0
 		for _, p := range wg.PeerStatus.Peer {
 			pe := wgPeerEntry{
 				PublicKey: p.PublicKey,
@@ -552,16 +565,12 @@ func buildDetailData(username string, iface *ifaceJSON) ifaceDetailData {
 				pe.TxBytes = humanBytes(int64(p.Transfer.TxBytes))
 				pe.RxBytes = humanBytes(int64(p.Transfer.RxBytes))
 			}
-			d.WGPeers = append(d.WGPeers, pe)
-		}
-		total := len(wg.PeerStatus.Peer)
-		up := 0
-		for _, p := range wg.PeerStatus.Peer {
 			if p.ConnectionStatus == "up" {
 				up++
 			}
+			d.WGPeers = append(d.WGPeers, pe)
 		}
-		d.Detail = fmt.Sprintf("%d peers (%d up)", total, up)
+		d.WGPeerSummary = fmt.Sprintf("%d peers (%d up)", total, up)
 	}
 
 	return d
@@ -703,44 +712,14 @@ func (h *InterfacesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	creds := restconf.CredentialsFromContext(r.Context())
 
-	var (
-		iface        *ifaceJSON
-		hw           hardwareWrapper
-		ifErr, hwErr error
-		wg           sync.WaitGroup
-	)
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		iface, ifErr = h.fetchInterface(r, name)
-	}()
-	go func() {
-		defer wg.Done()
-		hwErr = h.RC.Get(r.Context(), "/data/ietf-hardware:hardware", &hw)
-	}()
-	wg.Wait()
-
-	if ifErr != nil {
-		log.Printf("restconf interface %s: %v", name, ifErr)
+	iface, err := h.fetchInterface(r, name)
+	if err != nil {
+		log.Printf("restconf interface %s: %v", name, err)
 		http.Error(w, "Interface not found", http.StatusNotFound)
 		return
 	}
 
 	data := buildDetailData(creds.Username, iface)
-
-	// For WiFi interfaces, look for radio survey data in hardware.
-	if iface.WiFi != nil && hwErr == nil {
-		radioName := iface.WiFi.Radio
-		for _, c := range hw.Hardware.Component {
-			if c.WiFiRadio != nil && c.WiFiRadio.Survey != nil &&
-				len(c.WiFiRadio.Survey.Channel) > 0 &&
-				(radioName == "" || c.Name == radioName) {
-				data.SurveyChart = renderSurveySVG(c.WiFiRadio.Survey.Channel)
-				break
-			}
-		}
-	}
 
 	tmplName := "iface-detail.html"
 	if r.Header.Get("HX-Request") == "true" {

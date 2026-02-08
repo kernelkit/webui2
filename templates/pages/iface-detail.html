@@ -24,7 +24,13 @@
       {{if .Speed}}<tr><th>Speed</th><td>{{.Speed}}</td></tr>{{end}}
       {{if .Duplex}}<tr><th>Duplex</th><td>{{.Duplex}}</td></tr>{{end}}
       {{if .AutoNeg}}<tr><th>Auto-negotiation</th><td>{{.AutoNeg}}</td></tr>{{end}}
-      {{if .Detail}}<tr><th>Detail</th><td>{{.Detail}}</td></tr>{{end}}
+      {{if .WiFiMode}}<tr><th>Mode</th><td>{{.WiFiMode}}</td></tr>{{end}}
+      {{if .WiFiSSID}}<tr><th>SSID</th><td>{{.WiFiSSID}}</td></tr>{{end}}
+      {{if .WiFiSignal}}<tr><th>Signal</th><td>{{.WiFiSignal}}</td></tr>{{end}}
+      {{if .WiFiRxSpeed}}<tr><th>RX Speed</th><td>{{.WiFiRxSpeed}}</td></tr>{{end}}
+      {{if .WiFiTxSpeed}}<tr><th>TX Speed</th><td>{{.WiFiTxSpeed}}</td></tr>{{end}}
+      {{if .WiFiStationCount}}<tr><th>Connected Stations</th><td>{{.WiFiStationCount}}</td></tr>{{end}}
+      {{if .WGPeerSummary}}<tr><th>Peers</th><td>{{.WGPeerSummary}}</td></tr>{{end}}
     </table>
     {{if .Addresses}}
     <h3>Addresses</h3>
@@ -77,14 +83,6 @@
       {{end}}
     </tbody>
   </table>
-</section>
-{{end}}
-
-{{if .SurveyChart}}
-<section class="info-card">
-  <h2>Channel Survey</h2>
-  <p class="survey-hint">Channel utilization (% of active time) with noise floor overlay</p>
-  {{.SurveyChart}}
 </section>
 {{end}}
 
