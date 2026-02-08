@@ -12,14 +12,12 @@
 {{end}}
 
 {{if .Installer}}{{if .Installer.Active}}
-<section class="info-card" hx-get="/firmware" hx-trigger="every 3s" hx-select="#install-progress" hx-target="#install-progress" hx-swap="outerHTML">
+<section class="info-card" hx-get="/firmware" hx-trigger="every 3s" hx-target="#content">
   <h2>Install in Progress</h2>
-  <div id="install-progress">
-    <div class="progress-bar-wrap">
-      <div class="progress-bar" style="width: {{.Installer.Percentage}}%"></div>
-    </div>
-    <p class="progress-text">{{.Installer.Percentage}}% — {{.Installer.Message}}</p>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" style="width: {{.Installer.Percentage}}%"></div>
   </div>
+  <p class="progress-text">{{.Installer.Percentage}}% — {{.Installer.Message}}</p>
 </section>
 {{end}}{{end}}
 
