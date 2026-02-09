@@ -33,6 +33,21 @@ func authMiddleware(store *auth.SessionStore, next http.Handler) http.Handler {
 			return
 		}
 
+		// Sliding window: re-issue the cookie with a fresh timestamp.
+		// Skip for background polling endpoints so they don't keep
+		// the session alive indefinitely.
+		if !isPollingPath(r.URL.Path) {
+			if fresh, err := store.Create(username, password); err == nil {
+				http.SetCookie(w, &http.Cookie{
+					Name:     cookieName,
+					Value:    fresh,
+					Path:     "/",
+					HttpOnly: true,
+					SameSite: http.SameSiteLaxMode,
+				})
+			}
+		}
+
 		ctx := restconf.ContextWithCredentials(r.Context(), restconf.Credentials{
 			Username: username,
 			Password: password,
@@ -43,6 +58,10 @@ func authMiddleware(store *auth.SessionStore, next http.Handler) http.Handler {
 
 func isPublicPath(path string) bool {
 	return path == "/login" || strings.HasPrefix(path, "/assets/")
+}
+
+func isPollingPath(path string) bool {
+	return path == "/device-status" || strings.HasSuffix(path, "/counters")
 }
 
 func deny(w http.ResponseWriter, r *http.Request) {

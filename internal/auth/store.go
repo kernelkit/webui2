@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const absoluteTimeout = 8 * time.Hour
+const sessionTimeout = 1 * time.Hour
 
 // tokenPayload is the JSON structure sealed inside each cookie value.
 type tokenPayload struct {
@@ -94,7 +94,7 @@ func (s *SessionStore) Lookup(token string) (username, password string, ok bool)
 		return "", "", false
 	}
 
-	if time.Since(time.Unix(p.CreatedAt, 0)) > absoluteTimeout {
+	if time.Since(time.Unix(p.CreatedAt, 0)) > sessionTimeout {
 		return "", "", false
 	}
 
