@@ -1,0 +1,162 @@
+{{define "services.html"}}
+{{template "base" .}}
+{{end}}
+
+{{define "content"}}
+{{if .Error}}
+<div class="alert alert-error">{{.Error}}</div>
+{{end}}
+
+{{if .DHCP}}
+<section class="info-card">
+  <h2>DHCP Server</h2>
+  <table class="info-table">
+    <tr>
+      <th>Status</th>
+      <td>
+        <span class="status-dot {{if .DHCP.Enabled}}status-up{{else}}status-down{{end}}"></span>
+        {{if .DHCP.Enabled}}Enabled{{else}}Disabled{{end}}
+      </td>
+    </tr>
+  </table>
+
+  <div class="stats-row">
+    <span class="zone-badge"><span class="zone-badge-label">Discovers</span><span class="zone-badge-value">{{.DHCP.Stats.InDiscoveries}}</span></span>
+    <span class="zone-badge"><span class="zone-badge-label">Requests</span><span class="zone-badge-value">{{.DHCP.Stats.InRequests}}</span></span>
+    <span class="zone-badge"><span class="zone-badge-label">Releases</span><span class="zone-badge-value">{{.DHCP.Stats.InReleases}}</span></span>
+    <span class="zone-badge"><span class="zone-badge-label">Offers</span><span class="zone-badge-value">{{.DHCP.Stats.OutOffers}}</span></span>
+    <span class="zone-badge"><span class="zone-badge-label">Acks</span><span class="zone-badge-value">{{.DHCP.Stats.OutAcks}}</span></span>
+    <span class="zone-badge"><span class="zone-badge-label">Naks</span><span class="zone-badge-value">{{.DHCP.Stats.OutNaks}}</span></span>
+  </div>
+
+  {{if .DHCP.Leases}}
+  <h3 class="section-subtitle">Active Leases</h3>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>IP Address</th>
+          <th>MAC Address</th>
+          <th>Hostname</th>
+          <th>Expires</th>
+          <th>Client ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .DHCP.Leases}}
+        <tr>
+          <td class="num">{{.Address}}</td>
+          <td class="num">{{.MAC}}</td>
+          <td>{{if .Hostname}}{{.Hostname}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+          <td>{{.Expires}}</td>
+          <td>{{if .ClientID}}{{.ClientID}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="text-muted">No active leases.</p>
+  {{end}}
+</section>
+{{end}}
+
+{{if .NTP}}
+<section class="info-card">
+  <h2>NTP</h2>
+  <table class="info-table">
+    <tr>
+      <th>Sync Status</th>
+      <td>
+        <span class="status-dot {{if .NTP.Synchronized}}status-up{{else}}status-down{{end}}"></span>
+        {{if .NTP.Synchronized}}Synchronized{{else}}Not Synchronized{{end}}
+      </td>
+    </tr>
+    {{if .NTP.Stratum}}
+    <tr><th>Stratum</th><td class="num">{{.NTP.Stratum}}</td></tr>
+    {{end}}
+    {{if .NTP.RefID}}
+    <tr><th>Reference ID</th><td class="num">{{.NTP.RefID}}</td></tr>
+    {{end}}
+    {{if .NTP.Offset}}
+    <tr><th>Offset</th><td class="num">{{.NTP.Offset}}</td></tr>
+    {{end}}
+    {{if .NTP.RootDelay}}
+    <tr><th>Root Delay</th><td class="num">{{.NTP.RootDelay}}</td></tr>
+    {{end}}
+  </table>
+
+  {{if .NTP.Associations}}
+  <h3 class="section-subtitle">Associations</h3>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Server</th>
+          <th class="num">Stratum</th>
+          <th>Ref ID</th>
+          <th class="num">Reach</th>
+          <th class="num">Poll (s)</th>
+          <th class="num">Offset</th>
+          <th class="num">Delay</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .NTP.Associations}}
+        <tr>
+          <td>{{.Address}}</td>
+          <td class="num">{{.Stratum}}</td>
+          <td class="num">{{.RefID}}</td>
+          <td class="num">{{.Reach}}</td>
+          <td class="num">{{.Poll}}</td>
+          <td class="num">{{.Offset}}</td>
+          <td class="num">{{.Delay}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="text-muted">No associations.</p>
+  {{end}}
+</section>
+{{end}}
+
+{{if .LLDPNeighbors}}
+<section class="info-card">
+  <h2>LLDP Neighbors</h2>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Local Port</th>
+          <th>Chassis ID</th>
+          <th>System Name</th>
+          <th>Port ID</th>
+          <th>Port Desc</th>
+          <th>Mgmt Address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .LLDPNeighbors}}
+        <tr>
+          <td>{{.LocalPort}}</td>
+          <td class="num">{{.ChassisID}}</td>
+          <td>{{if .SystemName}}{{.SystemName}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+          <td class="num">{{if .PortID}}{{.PortID}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+          <td>{{if .PortDesc}}{{.PortDesc}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+          <td class="num">{{if .MgmtAddress}}{{.MgmtAddress}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}
+
+{{if and (not .DHCP) (not .NTP) (eq (len .LLDPNeighbors) 0)}}
+<section class="info-card">
+  <p class="text-muted">No services available on this device.</p>
+</section>
+{{end}}
+{{end}}

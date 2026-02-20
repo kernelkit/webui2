@@ -51,6 +51,26 @@ func New(
 	if err != nil {
 		return nil, err
 	}
+	routingTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/routing.html")
+	if err != nil {
+		return nil, err
+	}
+	wifiTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/wifi.html")
+	if err != nil {
+		return nil, err
+	}
+	vpnTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/vpn.html")
+	if err != nil {
+		return nil, err
+	}
+	servicesTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/services.html")
+	if err != nil {
+		return nil, err
+	}
+	containersTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/containers.html")
+	if err != nil {
+		return nil, err
+	}
 
 	login := &auth.LoginHandler{
 		Store:    store,
@@ -85,6 +105,12 @@ func New(
 		Template: fwrTmpl,
 	}
 
+	routing := &handlers.RoutingHandler{Template: routingTmpl, RC: rc}
+	wifi := &handlers.WiFiHandler{Template: wifiTmpl, RC: rc}
+	vpn := &handlers.VPNHandler{Template: vpnTmpl, RC: rc}
+	services := &handlers.ServicesHandler{Template: servicesTmpl, RC: rc}
+	containers := &handlers.ContainersHandler{Template: containersTmpl, RC: rc}
+
 	mux := http.NewServeMux()
 
 	// Auth routes (public).
@@ -108,6 +134,11 @@ func New(
 	mux.HandleFunc("POST /reboot", sys.Reboot)
 	mux.HandleFunc("GET /device-status", sys.DeviceStatus)
 	mux.HandleFunc("GET /config", sys.DownloadConfig)
+	mux.HandleFunc("GET /routing", routing.Overview)
+	mux.HandleFunc("GET /wifi", wifi.Overview)
+	mux.HandleFunc("GET /vpn", vpn.Overview)
+	mux.HandleFunc("GET /services", services.Overview)
+	mux.HandleFunc("GET /containers", containers.Overview)
 
 	handler := authMiddleware(store, mux)
 	handler = csrfMiddleware(handler)
