@@ -109,5 +109,8 @@ func New(
 	mux.HandleFunc("GET /device-status", sys.DeviceStatus)
 	mux.HandleFunc("GET /config", sys.DownloadConfig)
 
-	return authMiddleware(store, mux), nil
+	handler := authMiddleware(store, mux)
+	handler = csrfMiddleware(handler)
+	handler = securityHeadersMiddleware(handler)
+	return handler, nil
 }

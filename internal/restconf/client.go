@@ -40,17 +40,18 @@ type Client struct {
 
 // NewClient creates a RESTCONF client pointing at baseURL
 // (e.g. "http://127.0.0.1:8090/restconf").
-// TLS verification is skipped because rousette typically uses a
-// self-signed certificate on localhost.
-func NewClient(baseURL string) *Client {
+// When insecureTLS is true, TLS certificate verification is disabled.
+func NewClient(baseURL string, insecureTLS bool) *Client {
+	var tlsConfig *tls.Config
+	if insecureTLS {
+		tlsConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 	return &Client{
 		baseURL: strings.TrimRight(escapeZoneID(baseURL), "/"),
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
+				TLSClientConfig: tlsConfig,
 			},
 		},
 	}

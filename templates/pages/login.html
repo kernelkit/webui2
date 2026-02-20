@@ -4,10 +4,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{.CsrfToken}}">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
   <title>Infix — Login</title>
   <link rel="icon" type="image/png" href="/assets/img/jack.png">
   <link rel="stylesheet" href="/assets/css/style.css">
   <script src="/assets/js/htmx.min.js"></script>
+  <script src="/assets/js/app.js"></script>
 </head>
 <body class="login-page">
   <div class="login-wrapper">
@@ -17,6 +20,7 @@
     <div class="alert alert-error" role="alert">{{.Error}}</div>
     {{end}}
     <form method="POST" action="/login">
+      <input type="hidden" name="csrf" value="{{.CsrfToken}}">
       <div class="form-group">
         <label for="username">Username</label>
         <input type="text" id="username" name="username"

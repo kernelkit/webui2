@@ -17,7 +17,7 @@ type firewallWrapper struct {
 }
 
 type firewallJSON struct {
-	Enabled  *yangBool    `json:"enabled"`  // YANG default: true; nil means enabled
+	Enabled  *yangBool    `json:"enabled"` // YANG default: true; nil means enabled
 	Default  string       `json:"default"`
 	Logging  string       `json:"logging"`
 	Lockdown yangBool     `json:"lockdown"`
@@ -56,6 +56,7 @@ type policyJSON struct {
 // Template data structures.
 
 type firewallData struct {
+	CsrfToken   string
 	Username    string
 	Enabled     bool
 	EnabledText string
@@ -106,7 +107,10 @@ type FirewallHandler struct {
 // Overview renders the firewall overview (GET /firewall).
 func (h *FirewallHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
-	data := firewallData{Username: creds.Username}
+	data := firewallData{
+		Username:  creds.Username,
+		CsrfToken: csrfToken(r.Context()),
+	}
 
 	var fw firewallWrapper
 	if err := h.RC.Get(r.Context(), "/data/infix-firewall:firewall", &fw); err != nil {

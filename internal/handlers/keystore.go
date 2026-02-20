@@ -36,12 +36,12 @@ type asymmetricKeysJSON struct {
 }
 
 type asymmetricKeyJSON struct {
-	Name                 string           `json:"name"`
-	PrivateKeyFormat     string           `json:"private-key-format"`
-	PublicKeyFormat      string           `json:"public-key-format"`
-	PublicKey            string           `json:"public-key"`
-	CleartextPrivateKey  string           `json:"cleartext-private-key"`
-	Certificates         certificatesJSON `json:"certificates"`
+	Name                string           `json:"name"`
+	PrivateKeyFormat    string           `json:"private-key-format"`
+	PublicKeyFormat     string           `json:"public-key-format"`
+	PublicKey           string           `json:"public-key"`
+	CleartextPrivateKey string           `json:"cleartext-private-key"`
+	Certificates        certificatesJSON `json:"certificates"`
 }
 
 type certificatesJSON struct {
@@ -56,6 +56,7 @@ type certificateJSON struct {
 // Template data structures.
 
 type keystoreData struct {
+	CsrfToken      string
 	Username       string
 	SymmetricKeys  []symKeyEntry
 	AsymmetricKeys []asymKeyEntry
@@ -88,7 +89,10 @@ type KeystoreHandler struct {
 // Overview renders the keystore overview (GET /keystore).
 func (h *KeystoreHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
-	data := keystoreData{Username: creds.Username}
+	data := keystoreData{
+		Username:  creds.Username,
+		CsrfToken: csrfToken(r.Context()),
+	}
 
 	var ks keystoreWrapper
 	if err := h.RC.Get(r.Context(), "/data/ietf-keystore:keystore", &ks); err != nil {

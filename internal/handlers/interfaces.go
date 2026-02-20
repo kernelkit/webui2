@@ -21,18 +21,18 @@ type interfacesWrapper struct {
 }
 
 type ifaceJSON struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	OperStatus  string `json:"oper-status"`
-	PhysAddress string `json:"phys-address"`
-	IfIndex     int    `json:"if-index"`
-	IPv4        *ipCfg `json:"ietf-ip:ipv4"`
-	IPv6        *ipCfg `json:"ietf-ip:ipv6"`
-	Statistics *ifaceStats   `json:"statistics"`
-	Ethernet   *ethernetJSON `json:"ieee802-ethernet-interface:ethernet"`
-	BridgePort *bridgePortJSON  `json:"infix-interfaces:bridge-port"`
-	WiFi       *wifiJSON        `json:"infix-interfaces:wifi"`
-	WireGuard  *wireGuardJSON   `json:"infix-interfaces:wireguard"`
+	Name        string          `json:"name"`
+	Type        string          `json:"type"`
+	OperStatus  string          `json:"oper-status"`
+	PhysAddress string          `json:"phys-address"`
+	IfIndex     int             `json:"if-index"`
+	IPv4        *ipCfg          `json:"ietf-ip:ipv4"`
+	IPv6        *ipCfg          `json:"ietf-ip:ipv6"`
+	Statistics  *ifaceStats     `json:"statistics"`
+	Ethernet    *ethernetJSON   `json:"ieee802-ethernet-interface:ethernet"`
+	BridgePort  *bridgePortJSON `json:"infix-interfaces:bridge-port"`
+	WiFi        *wifiJSON       `json:"infix-interfaces:wifi"`
+	WireGuard   *wireGuardJSON  `json:"infix-interfaces:wireguard"`
 }
 
 type bridgePortJSON struct {
@@ -58,15 +58,15 @@ type wifiAPJSON struct {
 }
 
 type wifiStaJSON struct {
-	MACAddress    string    `json:"mac-address"`
-	SignalStrength *int     `json:"signal-strength"`
+	MACAddress     string    `json:"mac-address"`
+	SignalStrength *int      `json:"signal-strength"`
 	ConnectedTime  yangInt64 `json:"connected-time"`
-	RxPackets     yangInt64 `json:"rx-packets"`
-	TxPackets     yangInt64 `json:"tx-packets"`
-	RxBytes       yangInt64 `json:"rx-bytes"`
-	TxBytes       yangInt64 `json:"tx-bytes"`
-	RxSpeed       yangInt64 `json:"rx-speed"`
-	TxSpeed       yangInt64 `json:"tx-speed"`
+	RxPackets      yangInt64 `json:"rx-packets"`
+	TxPackets      yangInt64 `json:"tx-packets"`
+	RxBytes        yangInt64 `json:"rx-bytes"`
+	TxBytes        yangInt64 `json:"tx-bytes"`
+	RxSpeed        yangInt64 `json:"rx-speed"`
+	TxSpeed        yangInt64 `json:"tx-speed"`
 }
 
 type wifiStationJSON struct {
@@ -135,18 +135,18 @@ type ipAddr struct {
 }
 
 type ifaceStats struct {
-	InOctets        yangInt64 `json:"in-octets"`
-	OutOctets       yangInt64 `json:"out-octets"`
-	InUnicastPkts   yangInt64 `json:"in-unicast-pkts"`
-	InBroadcastPkts yangInt64 `json:"in-broadcast-pkts"`
-	InMulticastPkts yangInt64 `json:"in-multicast-pkts"`
-	InDiscards      yangInt64 `json:"in-discards"`
-	InErrors        yangInt64 `json:"in-errors"`
-	OutUnicastPkts  yangInt64 `json:"out-unicast-pkts"`
+	InOctets         yangInt64 `json:"in-octets"`
+	OutOctets        yangInt64 `json:"out-octets"`
+	InUnicastPkts    yangInt64 `json:"in-unicast-pkts"`
+	InBroadcastPkts  yangInt64 `json:"in-broadcast-pkts"`
+	InMulticastPkts  yangInt64 `json:"in-multicast-pkts"`
+	InDiscards       yangInt64 `json:"in-discards"`
+	InErrors         yangInt64 `json:"in-errors"`
+	OutUnicastPkts   yangInt64 `json:"out-unicast-pkts"`
 	OutBroadcastPkts yangInt64 `json:"out-broadcast-pkts"`
 	OutMulticastPkts yangInt64 `json:"out-multicast-pkts"`
-	OutDiscards     yangInt64 `json:"out-discards"`
-	OutErrors       yangInt64 `json:"out-errors"`
+	OutDiscards      yangInt64 `json:"out-discards"`
+	OutErrors        yangInt64 `json:"out-errors"`
 }
 
 type ethernetJSON struct {
@@ -161,27 +161,28 @@ type ethernetJSON struct {
 }
 
 type ethFrameStats struct {
-	InTotalPkts            yangInt64 `json:"in-total-pkts"`
-	InTotalOctets          yangInt64 `json:"in-total-octets"`
-	InGoodPkts             yangInt64 `json:"in-good-pkts"`
-	InGoodOctets           yangInt64 `json:"in-good-octets"`
-	InBroadcast            yangInt64 `json:"in-broadcast"`
-	InMulticast            yangInt64 `json:"in-multicast"`
-	InErrorFCS             yangInt64 `json:"in-error-fcs"`
-	InErrorUndersize       yangInt64 `json:"in-error-undersize"`
-	InErrorOversize        yangInt64 `json:"in-error-oversize"`
-	InErrorMACInternal     yangInt64 `json:"in-error-mac-internal"`
-	OutTotalPkts           yangInt64 `json:"out-total-pkts"`
-	OutTotalOctets         yangInt64 `json:"out-total-octets"`
-	OutGoodPkts            yangInt64 `json:"out-good-pkts"`
-	OutGoodOctets          yangInt64 `json:"out-good-octets"`
-	OutBroadcast           yangInt64 `json:"out-broadcast"`
-	OutMulticast           yangInt64 `json:"out-multicast"`
+	InTotalPkts        yangInt64 `json:"in-total-pkts"`
+	InTotalOctets      yangInt64 `json:"in-total-octets"`
+	InGoodPkts         yangInt64 `json:"in-good-pkts"`
+	InGoodOctets       yangInt64 `json:"in-good-octets"`
+	InBroadcast        yangInt64 `json:"in-broadcast"`
+	InMulticast        yangInt64 `json:"in-multicast"`
+	InErrorFCS         yangInt64 `json:"in-error-fcs"`
+	InErrorUndersize   yangInt64 `json:"in-error-undersize"`
+	InErrorOversize    yangInt64 `json:"in-error-oversize"`
+	InErrorMACInternal yangInt64 `json:"in-error-mac-internal"`
+	OutTotalPkts       yangInt64 `json:"out-total-pkts"`
+	OutTotalOctets     yangInt64 `json:"out-total-octets"`
+	OutGoodPkts        yangInt64 `json:"out-good-pkts"`
+	OutGoodOctets      yangInt64 `json:"out-good-octets"`
+	OutBroadcast       yangInt64 `json:"out-broadcast"`
+	OutMulticast       yangInt64 `json:"out-multicast"`
 }
 
 // Template data structures.
 
 type interfacesData struct {
+	CsrfToken  string
 	Username   string
 	Interfaces []ifaceEntry
 	Error      string
@@ -216,7 +217,10 @@ type InterfacesHandler struct {
 // Overview renders the interfaces page (GET /interfaces).
 func (h *InterfacesHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
-	data := interfacesData{Username: creds.Username}
+	data := interfacesData{
+		Username:  creds.Username,
+		CsrfToken: csrfToken(r.Context()),
+	}
 
 	var ifaces interfacesWrapper
 	if err := h.RC.Get(r.Context(), "/data/ietf-interfaces:interfaces", &ifaces); err != nil {
@@ -240,25 +244,25 @@ func (h *InterfacesHandler) Overview(w http.ResponseWriter, r *http.Request) {
 // name used by the Infix CLI (cli_pretty).
 func prettyIfType(full string) string {
 	pretty := map[string]string{
-		"bridge":            "bridge",
-		"dummy":             "dummy",
-		"ethernet":          "ethernet",
-		"gre":               "gre",
-		"gretap":            "gretap",
-		"vxlan":             "vxlan",
-		"wireguard":         "wireguard",
-		"lag":               "lag",
-		"loopback":          "loopback",
-		"veth":              "veth",
-		"vlan":              "vlan",
-		"wifi":              "wifi",
-		"other":             "other",
-		"ethernetCsmacd":    "ethernet",
-		"softwareLoopback":  "loopback",
-		"l2vlan":            "vlan",
-		"ieee8023adLag":     "lag",
-		"ieee80211":         "wifi",
-		"ilan":              "veth",
+		"bridge":           "bridge",
+		"dummy":            "dummy",
+		"ethernet":         "ethernet",
+		"gre":              "gre",
+		"gretap":           "gretap",
+		"vxlan":            "vxlan",
+		"wireguard":        "wireguard",
+		"lag":              "lag",
+		"loopback":         "loopback",
+		"veth":             "veth",
+		"vlan":             "vlan",
+		"wifi":             "wifi",
+		"other":            "other",
+		"ethernetCsmacd":   "ethernet",
+		"softwareLoopback": "loopback",
+		"l2vlan":           "vlan",
+		"ieee8023adLag":    "lag",
+		"ieee80211":        "wifi",
+		"ilan":             "veth",
 	}
 
 	if i := strings.LastIndex(full, ":"); i >= 0 {
@@ -377,17 +381,18 @@ func makeIfaceEntry(iface ifaceJSON, indent string) ifaceEntry {
 
 // Template data for the interface detail page.
 type ifaceDetailData struct {
-	Username  string
-	Name      string
-	Type      string
-	Status    string
-	StatusUp  bool
-	PhysAddr  string
-	IfIndex   int
-	MTU       int
-	Speed     string
-	Duplex    string
-	AutoNeg   string
+	CsrfToken        string
+	Username         string
+	Name             string
+	Type             string
+	Status           string
+	StatusUp         bool
+	PhysAddr         string
+	IfIndex          int
+	MTU              int
+	Speed            string
+	Duplex           string
+	AutoNeg          string
 	Addresses        []addrEntry
 	WiFiMode         string // "Access Point" or "Station"
 	WiFiSSID         string
@@ -397,10 +402,10 @@ type ifaceDetailData struct {
 	WiFiStationCount string // e.g. "3" for AP mode
 	WGPeerSummary    string // e.g. "3 peers (2 up)"
 	Counters         ifaceCounters
-	EthFrameStats []kvEntry
-	WGPeers       []wgPeerEntry
-	WiFiStations  []wifiStaEntry
-	ScanResults   []wifiScanEntry
+	EthFrameStats    []kvEntry
+	WGPeers          []wgPeerEntry
+	WiFiStations     []wifiStaEntry
+	ScanResults      []wifiScanEntry
 }
 
 type ifaceCounters struct {
@@ -424,7 +429,7 @@ type kvEntry struct {
 }
 
 type wgPeerEntry struct {
-	PublicKey  string
+	PublicKey string
 	Status    string
 	StatusUp  bool
 	Endpoint  string
@@ -470,15 +475,16 @@ func (h *InterfacesHandler) fetchInterface(r *http.Request, name string) (*iface
 }
 
 // buildDetailData converts raw RESTCONF interface data to template data.
-func buildDetailData(username string, iface *ifaceJSON) ifaceDetailData {
+func buildDetailData(username, csrf string, iface *ifaceJSON) ifaceDetailData {
 	d := ifaceDetailData{
-		Username: username,
-		Name:     iface.Name,
-		Type:     prettyIfType(iface.Type),
-		Status:   iface.OperStatus,
-		StatusUp: iface.OperStatus == "up",
-		PhysAddr: iface.PhysAddress,
-		IfIndex:  iface.IfIndex,
+		Username:  username,
+		CsrfToken: csrf,
+		Name:      iface.Name,
+		Type:      prettyIfType(iface.Type),
+		Status:    iface.OperStatus,
+		StatusUp:  iface.OperStatus == "up",
+		PhysAddr:  iface.PhysAddress,
+		IfIndex:   iface.IfIndex,
 	}
 
 	if iface.IPv4 != nil {
@@ -552,8 +558,8 @@ func buildDetailData(username string, iface *ifaceJSON) ifaceDetailData {
 		for _, p := range wg.PeerStatus.Peer {
 			pe := wgPeerEntry{
 				PublicKey: p.PublicKey,
-				Status:   p.ConnectionStatus,
-				StatusUp: p.ConnectionStatus == "up",
+				Status:    p.ConnectionStatus,
+				StatusUp:  p.ConnectionStatus == "up",
 			}
 			if p.EndpointAddress != "" {
 				pe.Endpoint = fmt.Sprintf("%s:%d", p.EndpointAddress, p.EndpointPort)
@@ -719,7 +725,7 @@ func (h *InterfacesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := buildDetailData(creds.Username, iface)
+	data := buildDetailData(creds.Username, csrfToken(r.Context()), iface)
 
 	tmplName := "iface-detail.html"
 	if r.Header.Get("HX-Request") == "true" {
@@ -743,7 +749,7 @@ func (h *InterfacesHandler) Counters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := buildDetailData(creds.Username, iface)
+	data := buildDetailData(creds.Username, csrfToken(r.Context()), iface)
 
 	if err := h.CountersTemplate.ExecuteTemplate(w, "iface-counters", data); err != nil {
 		log.Printf("template error: %v", err)
@@ -825,12 +831,10 @@ func renderSurveySVG(channels []surveyChanJSON) template.HTML {
 		nRange = 10
 	}
 
-	font := `-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif`
-
 	var b strings.Builder
 
-	fmt.Fprintf(&b, `<svg viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" `+
-		`style="max-width:100%%;font-family:%s">`, svgW, svgH, font)
+	fmt.Fprintf(&b, `<svg viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg" class="survey-chart">`,
+		svgW, svgH)
 
 	// Y-axis grid lines and labels (utilization %).
 	for _, pct := range []int{0, 25, 50, 75, 100} {

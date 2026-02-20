@@ -41,58 +41,11 @@ func (h *SystemHandler) Reboot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, rebootSpinnerHTML)
 }
 
-const rebootSpinnerHTML = `<div class="reboot-overlay">
+const rebootSpinnerHTML = `<div class="reboot-overlay" data-timeout="120000" data-interval="2000">
   <div class="reboot-spinner"></div>
   <p class="reboot-message">Rebooting&hellip;</p>
   <p class="reboot-status" id="reboot-status">Waiting for device to shut down&hellip;</p>
-</div>
-<script>
-(function() {
-  var timeout = 120000;
-  var interval = 2000;
-  var returnTo = window.location.pathname + window.location.search;
-  var start = Date.now();
-  var status = document.getElementById('reboot-status');
-
-  function waitDown() {
-    if (Date.now() - start > timeout) {
-      status.textContent = 'Timeout — device did not shut down within 2 minutes.';
-      status.style.color = '#dc2626';
-      return;
-    }
-    fetch('/device-status').then(function(r) {
-      if (r.ok) {
-        setTimeout(waitDown, interval);
-      } else {
-        status.textContent = 'Device is down, waiting for it to come back\u2026';
-        setTimeout(waitUp, interval);
-      }
-    }).catch(function() {
-      status.textContent = 'Device is down, waiting for it to come back\u2026';
-      setTimeout(waitUp, interval);
-    });
-  }
-
-  function waitUp() {
-    if (Date.now() - start > timeout) {
-      status.textContent = 'Timeout — device did not respond within 2 minutes.';
-      status.style.color = '#dc2626';
-      return;
-    }
-    fetch('/device-status').then(function(r) {
-      if (r.ok) {
-        window.location = returnTo || '/';
-      } else {
-        setTimeout(waitUp, interval);
-      }
-    }).catch(function() {
-      setTimeout(waitUp, interval);
-    });
-  }
-
-  setTimeout(waitDown, interval);
-})();
-</script>`
+</div>`
 
 // DownloadConfig serves the startup datastore as a JSON file download.
 func (h *SystemHandler) DownloadConfig(w http.ResponseWriter, r *http.Request) {
@@ -125,9 +78,9 @@ type fwSoftwareState struct {
 }
 
 type fwInstallerState struct {
-	Operation string             `json:"operation"`
+	Operation string              `json:"operation"`
 	Progress  fwInstallerProgress `json:"progress"`
-	LastError string             `json:"last-error"`
+	LastError string              `json:"last-error"`
 }
 
 type fwInstallerProgress struct {
@@ -151,6 +104,7 @@ type fwSlotBundle struct {
 // Template data for the firmware page.
 
 type firmwareData struct {
+	CsrfToken string
 	Username  string
 	Slots     []slotEntry
 	Installer *installerEntry
@@ -178,8 +132,9 @@ type installerEntry struct {
 func (h *SystemHandler) Firmware(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
 	data := firmwareData{
-		Username: creds.Username,
-		Message:  r.URL.Query().Get("msg"),
+		Username:  creds.Username,
+		CsrfToken: csrfToken(r.Context()),
+		Message:   r.URL.Query().Get("msg"),
 	}
 
 	var sw fwSoftwareWrapper

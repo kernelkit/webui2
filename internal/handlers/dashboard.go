@@ -150,16 +150,16 @@ type hardwareWrapper struct {
 }
 
 type hwComponentJSON struct {
-	Name        string `json:"name"`
-	Class       string `json:"class"`
-	Description string `json:"description"`
-	Parent      string `json:"parent"`
-	MfgName     string `json:"mfg-name"`
-	ModelName   string `json:"model-name"`
-	SerialNum   string `json:"serial-num"`
-	HardwareRev string `json:"hardware-rev"`
-	PhysAddress string `json:"infix-hardware:phys-address"`
-	WiFiRadio *wifiRadioJSON `json:"infix-hardware:wifi-radio"`
+	Name        string         `json:"name"`
+	Class       string         `json:"class"`
+	Description string         `json:"description"`
+	Parent      string         `json:"parent"`
+	MfgName     string         `json:"mfg-name"`
+	ModelName   string         `json:"model-name"`
+	SerialNum   string         `json:"serial-num"`
+	HardwareRev string         `json:"hardware-rev"`
+	PhysAddress string         `json:"infix-hardware:phys-address"`
+	WiFiRadio   *wifiRadioJSON `json:"infix-hardware:wifi-radio"`
 	SensorData  *struct {
 		ValueType  string    `json:"value-type"`
 		Value      yangInt64 `json:"value"`
@@ -175,6 +175,7 @@ type hwComponentJSON struct {
 // Template data structures.
 
 type dashboardData struct {
+	CsrfToken  string
 	Username   string
 	Hostname   string
 	OSName     string
@@ -195,11 +196,11 @@ type dashboardData struct {
 }
 
 type boardInfo struct {
-	Model       string
+	Model        string
 	Manufacturer string
-	SerialNum   string
-	HardwareRev string
-	BaseMAC     string
+	SerialNum    string
+	HardwareRev  string
+	BaseMAC      string
 }
 
 type sensorEntry struct {
@@ -225,7 +226,10 @@ type DashboardHandler struct {
 // Index renders the dashboard (GET /).
 func (h *DashboardHandler) Index(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
-	data := dashboardData{Username: creds.Username}
+	data := dashboardData{
+		Username:  creds.Username,
+		CsrfToken: csrfToken(r.Context()),
+	}
 
 	// Detach from the request context so that RESTCONF calls survive
 	// browser connection resets (common during login redirects).

@@ -4,10 +4,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{.CsrfToken}}">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
   <title>Infix</title>
   <link rel="icon" type="image/png" href="/assets/img/jack.png">
   <link rel="stylesheet" href="/assets/css/style.css">
   <script src="/assets/js/htmx.min.js"></script>
+  <script src="/assets/js/app.js"></script>
 </head>
 <body hx-boost="true">
   <div id="conn-banner" class="conn-banner" hidden>Device unreachable</div>
@@ -17,21 +20,6 @@
       {{block "content" .}}{{end}}
     </main>
   </div>
-  <script>
-  (function(){
-    var banner = document.getElementById('conn-banner');
-    var down = false;
-    function check(){
-      fetch('/device-status').then(function(r){
-        if(!r.ok) throw r;
-        if(down){ down=false; banner.hidden=true; }
-      }).catch(function(){
-        if(!down){ down=true; banner.hidden=false; }
-      });
-    }
-    setInterval(check, 10000);
-  })();
-  </script>
 </body>
 </html>
 {{end}}

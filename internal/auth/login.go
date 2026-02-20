@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/kernelkit/infix-webui/internal/restconf"
+	"github.com/kernelkit/infix-webui/internal/security"
 )
 
 const cookieName = "session"
@@ -18,15 +19,20 @@ type LoginHandler struct {
 	Template *template.Template
 }
 
+type loginData struct {
+	Error     string
+	CsrfToken string
+}
+
 // ShowLogin renders the login page (GET /login).
 func (h *LoginHandler) ShowLogin(w http.ResponseWriter, r *http.Request) {
-	h.renderLogin(w, "")
+	h.renderLogin(w, r, "")
 }
 
 // DoLogin validates credentials against RESTCONF and creates a session (POST /login).
 func (h *LoginHandler) DoLogin(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.renderLogin(w, "Invalid request.")
+		h.renderLogin(w, r, "Invalid request.")
 		return
 	}
 
@@ -34,7 +40,7 @@ func (h *LoginHandler) DoLogin(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if username == "" || password == "" {
-		h.renderLogin(w, "Username and password are required.")
+		h.renderLogin(w, r, "Username and password are required.")
 		return
 	}
 
@@ -44,14 +50,14 @@ func (h *LoginHandler) DoLogin(w http.ResponseWriter, r *http.Request) {
 		log.Printf("login failed for %q: %v", username, err)
 		var authErr *restconf.AuthError
 		if errors.As(err, &authErr) {
-			h.renderLogin(w, "Invalid username or password.")
+			h.renderLogin(w, r, "Invalid username or password.")
 		} else {
-			h.renderLogin(w, "Unable to reach the device. Please try again later.")
+			h.renderLogin(w, r, "Unable to reach the device. Please try again later.")
 		}
 		return
 	}
 
-	token, err := h.Store.Create(username, password)
+	token, csrfToken, err := h.Store.Create(username, password)
 	if err != nil {
 		log.Printf("session create error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -63,9 +69,10 @@ func (h *LoginHandler) DoLogin(w http.ResponseWriter, r *http.Request) {
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   security.IsSecureRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	})
+	security.EnsureToken(w, r, csrfToken)
 
 	fullRedirect(w, r, "/")
 }
@@ -82,9 +89,10 @@ func (h *LoginHandler) DoLogout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   security.IsSecureRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	})
+	security.ClearToken(w, r)
 
 	fullRedirect(w, r, "/login")
 }
@@ -101,8 +109,11 @@ func fullRedirect(w http.ResponseWriter, r *http.Request, url string) {
 	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 
-func (h *LoginHandler) renderLogin(w http.ResponseWriter, errMsg string) {
-	data := map[string]string{"Error": errMsg}
+func (h *LoginHandler) renderLogin(w http.ResponseWriter, r *http.Request, errMsg string) {
+	data := loginData{
+		Error:     errMsg,
+		CsrfToken: security.TokenFromContext(r.Context()),
+	}
 	if err := h.Template.ExecuteTemplate(w, "login.html", data); err != nil {
 		log.Printf("template error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

@@ -15,7 +15,7 @@
 <section class="info-card" hx-get="/firmware" hx-trigger="every 3s" hx-target="#content">
   <h2>Install in Progress</h2>
   <div class="progress-bar-wrap">
-    <div class="progress-bar" style="width: {{.Installer.Percentage}}%"></div>
+    <div class="progress-bar" data-progress="{{.Installer.Percentage}}"></div>
   </div>
   <p class="progress-text">{{.Installer.Percentage}}% — {{.Installer.Message}}</p>
 </section>
@@ -54,6 +54,7 @@
 <section class="info-card">
   <h2>Install Firmware</h2>
   <form hx-post="/firmware/install" hx-swap="none" class="firmware-form">
+    <input type="hidden" name="csrf" value="{{.CsrfToken}}">
     <div class="form-group">
       <label for="fw-url">Bundle URL</label>
       <input type="url" id="fw-url" name="url" placeholder="https://example.com/firmware.raucb" required>

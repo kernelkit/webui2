@@ -19,6 +19,7 @@ const sessionTimeout = 1 * time.Hour
 type tokenPayload struct {
 	Username  string `json:"u"`
 	Password  string `json:"p"`
+	CsrfToken string `json:"c"`
 	CreatedAt int64  `json:"t"` // unix seconds
 }
 
@@ -53,10 +54,19 @@ func NewSessionStore(keyFile string) (*SessionStore, error) {
 }
 
 // Create returns an encrypted token carrying the user's credentials.
-func (s *SessionStore) Create(username, password string) (string, error) {
+func (s *SessionStore) Create(username, password string) (string, string, error) {
+	csrf := randomToken()
+	token, err := s.CreateWithCSRF(username, password, csrf)
+	return token, csrf, err
+}
+
+// CreateWithCSRF returns an encrypted token carrying the user's credentials
+// and a bound CSRF token.
+func (s *SessionStore) CreateWithCSRF(username, password, csrf string) (string, error) {
 	payload, err := json.Marshal(tokenPayload{
 		Username:  username,
 		Password:  password,
+		CsrfToken: csrf,
 		CreatedAt: time.Now().Unix(),
 	})
 	if err != nil {
@@ -73,32 +83,32 @@ func (s *SessionStore) Create(username, password string) (string, error) {
 }
 
 // Lookup decrypts a token and returns the credentials if valid.
-func (s *SessionStore) Lookup(token string) (username, password string, ok bool) {
+func (s *SessionStore) Lookup(token string) (username, password, csrf string, ok bool) {
 	raw, err := base64.RawURLEncoding.DecodeString(token)
 	if err != nil {
-		return "", "", false
+		return "", "", "", false
 	}
 
 	ns := s.aead.NonceSize()
 	if len(raw) < ns {
-		return "", "", false
+		return "", "", "", false
 	}
 
 	plaintext, err := s.aead.Open(nil, raw[:ns], raw[ns:], nil)
 	if err != nil {
-		return "", "", false
+		return "", "", "", false
 	}
 
 	var p tokenPayload
 	if err := json.Unmarshal(plaintext, &p); err != nil {
-		return "", "", false
+		return "", "", "", false
 	}
 
 	if time.Since(time.Unix(p.CreatedAt, 0)) > sessionTimeout {
-		return "", "", false
+		return "", "", "", false
 	}
 
-	return p.Username, p.Password, true
+	return p.Username, p.Password, p.CsrfToken, true
 }
 
 // Delete is a no-op for stateless tokens (the cookie is cleared by
@@ -132,4 +142,12 @@ func loadOrCreateKey(path string) ([32]byte, error) {
 	}
 
 	return key, nil
+}
+
+func randomToken() string {
+	var b [32]byte
+	if _, err := io.ReadFull(rand.Reader, b[:]); err != nil {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString(b[:])
 }

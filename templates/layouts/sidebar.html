@@ -48,6 +48,7 @@
             hx-target="#content"
             hx-swap="innerHTML">Reboot</button>
     <form method="POST" action="/logout">
+      <input type="hidden" name="csrf" value="{{.CsrfToken}}">
       <button type="submit" class="btn btn-logout">Logout</button>
     </form>
   </div>

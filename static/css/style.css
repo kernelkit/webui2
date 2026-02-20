@@ -582,6 +582,7 @@ html, body {
   height: 100%;
   border-radius: var(--radius);
   transition: width 0.3s ease;
+  width: 0%;
 }
 
 .progress-text {
@@ -625,7 +626,16 @@ html, body {
   margin-top: 0.5rem;
 }
 
+.reboot-status.is-error {
+  color: #dc2626;
+}
+
 /* Channel survey chart */
+.survey-chart {
+  max-width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
 .survey-hint {
   font-size: 0.8rem;
   color: #9ca3af;

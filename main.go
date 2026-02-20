@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/kernelkit/infix-webui/internal/auth"
 	"github.com/kernelkit/infix-webui/internal/restconf"
@@ -28,6 +30,7 @@ func main() {
 	listen := flag.String("listen", ":8080", "address to listen on")
 	restconfURL := flag.String("restconf", defaultRC, "RESTCONF base URL")
 	sessionKey := flag.String("session-key", "/var/lib/misc/webui-session.key", "path to persistent session key file")
+	insecureTLS := flag.Bool("insecure-restconf", envBool("RESTCONF_INSECURE"), "disable RESTCONF TLS verification")
 	flag.Parse()
 
 	store, err := auth.NewSessionStore(*sessionKey)
@@ -35,7 +38,7 @@ func main() {
 		log.Fatalf("session store: %v", err)
 	}
 
-	rc := restconf.NewClient(*restconfURL)
+	rc := restconf.NewClient(*restconfURL, *insecureTLS)
 
 	tmplFS, err := fs.Sub(templateFS, "templates")
 	if err != nil {
@@ -53,7 +56,28 @@ func main() {
 	}
 
 	log.Printf("listening on %s (restconf %s)", *listen, *restconfURL)
-	if err := http.ListenAndServe(*listen, handler); err != nil {
+	srv := &http.Server{
+		Addr:              *listen,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("listen: %v", err)
+	}
+}
+
+func envBool(key string) bool {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return false
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "y", "on":
+		return true
+	default:
+		return false
 	}
 }
