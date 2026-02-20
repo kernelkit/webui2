@@ -59,6 +59,7 @@ type keystoreData struct {
 	CsrfToken      string
 	Username       string
 	ActivePage     string
+	PageTitle      string
 	Capabilities   *Capabilities
 	SymmetricKeys  []symKeyEntry
 	AsymmetricKeys []asymKeyEntry
@@ -95,6 +96,7 @@ func (h *KeystoreHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		Username:     creds.Username,
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "keystore",
+		PageTitle:    "Keystore",
 		Capabilities: DetectCapabilities(r.Context(), h.RC),
 	}
 

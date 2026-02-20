@@ -178,6 +178,7 @@ type dashboardData struct {
 	CsrfToken    string
 	Username     string
 	ActivePage   string
+	PageTitle    string
 	Capabilities *Capabilities
 	Hostname     string
 	OSName       string
@@ -188,9 +189,11 @@ type dashboardData struct {
 	MemTotal     int64
 	MemUsed      int64
 	MemPercent   int
+	MemClass     string
 	Load1        string
 	Load5        string
 	Load15       string
+	CPUClass     string
 	Disks        []diskEntry
 	Board        boardInfo
 	Sensors      []sensorEntry
@@ -232,6 +235,7 @@ func (h *DashboardHandler) Index(w http.ResponseWriter, r *http.Request) {
 		Username:     creds.Username,
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "dashboard",
+		PageTitle:    "Dashboard",
 		Capabilities: DetectCapabilities(r.Context(), h.RC),
 	}
 
@@ -285,7 +289,22 @@ func (h *DashboardHandler) Index(w http.ResponseWriter, r *http.Request) {
 			data.MemPercent = int(float64(total-avail) / float64(total) * 100)
 		}
 
+		switch {
+		case data.MemPercent >= 90:
+			data.MemClass = "is-crit"
+		case data.MemPercent >= 70:
+			data.MemClass = "is-warn"
+		default:
+			data.MemClass = ""
+		}
+
 		la := ss.Resource.LoadAverage
+		if la1 := float64(la.Load1min); la1 >= 0.9 {
+			data.CPUClass = "is-crit"
+		} else if la1 >= 0.7 {
+			data.CPUClass = "is-warn"
+		}
+
 		data.Load1 = strconv.FormatFloat(float64(la.Load1min), 'f', 2, 64)
 		data.Load5 = strconv.FormatFloat(float64(la.Load5min), 'f', 2, 64)
 		data.Load15 = strconv.FormatFloat(float64(la.Load15min), 'f', 2, 64)

@@ -59,6 +59,7 @@ type firewallData struct {
 	CsrfToken    string
 	Username     string
 	ActivePage   string
+	PageTitle    string
 	Capabilities *Capabilities
 	Enabled      bool
 	EnabledText  string
@@ -113,6 +114,7 @@ func (h *FirewallHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		Username:     creds.Username,
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "firewall",
+		PageTitle:    "Firewall",
 		Capabilities: DetectCapabilities(r.Context(), h.RC),
 	}
 

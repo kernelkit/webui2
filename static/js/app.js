@@ -157,3 +157,29 @@
     });
   });
 })();
+
+// Sidebar toggle (mobile)
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('hamburger-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      var open = document.body.classList.toggle('sidebar-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    // Close sidebar when clicking the overlay (::after pseudo)
+    document.body.addEventListener('click', function(e) {
+      if (document.body.classList.contains('sidebar-open') && e.target === document.body) {
+        document.body.classList.remove('sidebar-open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    // Close sidebar when a nav link is clicked (htmx navigation)
+    document.addEventListener('htmx:beforeRequest', function() {
+      if (document.body.classList.contains('sidebar-open')) {
+        document.body.classList.remove('sidebar-open');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  });
+})();

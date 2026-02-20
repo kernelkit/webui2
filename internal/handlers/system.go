@@ -107,6 +107,7 @@ type firmwareData struct {
 	CsrfToken    string
 	Username     string
 	ActivePage   string
+	PageTitle    string
 	Capabilities *Capabilities
 	Slots        []slotEntry
 	Installer    *installerEntry
@@ -137,6 +138,7 @@ func (h *SystemHandler) Firmware(w http.ResponseWriter, r *http.Request) {
 		Username:     creds.Username,
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "firmware",
+		PageTitle:    "Firmware",
 		Capabilities: DetectCapabilities(r.Context(), h.RC),
 		Message:      r.URL.Query().Get("msg"),
 	}

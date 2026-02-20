@@ -186,6 +186,7 @@ type interfacesData struct {
 	Username     string
 	ActivePage   string
 	Capabilities *Capabilities
+	PageTitle    string
 	Interfaces   []ifaceEntry
 	Error        string
 }
@@ -223,6 +224,7 @@ func (h *InterfacesHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		Username:     creds.Username,
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "interfaces",
+		PageTitle:    "Interfaces",
 		Capabilities: DetectCapabilities(r.Context(), h.RC),
 	}
 
@@ -389,6 +391,7 @@ type ifaceDetailData struct {
 	Username         string
 	ActivePage       string
 	Capabilities     *Capabilities
+	PageTitle        string
 	Name             string
 	Type             string
 	Status           string
@@ -733,6 +736,7 @@ func (h *InterfacesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 
 	data := buildDetailData(creds.Username, csrfToken(r.Context()), iface)
 	data.ActivePage = "interfaces"
+	data.PageTitle = "Interface " + name
 	data.Capabilities = DetectCapabilities(r.Context(), h.RC)
 
 	tmplName := "iface-detail.html"

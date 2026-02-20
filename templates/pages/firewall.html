@@ -9,12 +9,12 @@
 
 <section class="info-grid">
   <div class="info-card">
-    <h2>Firewall Status</h2>
+    <div class="card-header">Firewall Status</div>
     <table class="info-table">
       <tr>
         <th>Firewall</th>
         <td>
-          <span class="status-dot {{if .Enabled}}status-up{{else}}status-down{{end}}"></span>
+          <span class="iface-status {{if .Enabled}}iface-up{{else}}iface-down{{end}}"></span>
           {{.EnabledText}}
         </td>
       </tr>
@@ -32,13 +32,13 @@
 
 {{if .Matrix}}
 <section class="info-card">
-  <h2>Zone Matrix</h2>
+  <div class="card-header">Zone Matrix</div>
   <div class="matrix-wrap">
     <table class="zone-matrix">
       <thead>
         <tr>
           <th class="matrix-corner">&rarr;</th>
-          {{range .ZoneNames}}<th>{{.}}</th>{{end}}
+          {{range .ZoneNames}}<th><span class="zone-badge">{{.}}</span></th>{{end}}
         </tr>
       </thead>
       <tbody>
@@ -60,8 +60,9 @@
 
 {{if .Zones}}
 <section class="info-card">
-  <h2>Zones</h2>
-  <table class="disk-table">
+  <div class="card-header">Zones</div>
+  <div class="data-table-wrap">
+    <table class="data-table">
     <thead>
       <tr>
         <th>Name</th>
@@ -83,13 +84,15 @@
       {{end}}
     </tbody>
   </table>
+  </div>
 </section>
 {{end}}
 
 {{if .Policies}}
 <section class="info-card">
-  <h2>Policies</h2>
-  <table class="disk-table">
+  <div class="card-header">Policies</div>
+  <div class="data-table-wrap">
+    <table class="data-table">
     <thead>
       <tr>
         <th>Name</th>
@@ -104,7 +107,7 @@
       {{range .Policies}}
       <tr>
         <td>{{.Name}}</td>
-        <td>{{.Priority}}</td>
+        <td class="num">{{.Priority}}</td>
         <td><span class="badge badge-{{.Action}}">{{.Action}}</span></td>
         <td>{{.Ingress}}</td>
         <td>{{.Egress}}</td>
@@ -113,6 +116,7 @@
       {{end}}
     </tbody>
   </table>
+  </div>
 </section>
 {{end}}
 {{end}}
