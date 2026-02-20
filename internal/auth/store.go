@@ -15,12 +15,12 @@ import (
 
 const sessionTimeout = 1 * time.Hour
 
-// tokenPayload is the JSON structure sealed inside each cookie value.
 type tokenPayload struct {
-	Username  string `json:"u"`
-	Password  string `json:"p"`
-	CsrfToken string `json:"c"`
-	CreatedAt int64  `json:"t"` // unix seconds
+	Username  string          `json:"u"`
+	Password  string          `json:"p"`
+	CsrfToken string          `json:"c"`
+	CreatedAt int64           `json:"t"`
+	Features  map[string]bool `json:"f,omitempty"`
 }
 
 // SessionStore issues and validates stateless encrypted tokens.
@@ -53,21 +53,22 @@ func NewSessionStore(keyFile string) (*SessionStore, error) {
 	return &SessionStore{aead: aead}, nil
 }
 
-// Create returns an encrypted token carrying the user's credentials.
-func (s *SessionStore) Create(username, password string) (string, string, error) {
+// Create returns an encrypted token carrying the user's credentials and capabilities.
+func (s *SessionStore) Create(username, password string, features map[string]bool) (string, string, error) {
 	csrf := randomToken()
-	token, err := s.CreateWithCSRF(username, password, csrf)
+	token, err := s.CreateWithCSRF(username, password, csrf, features)
 	return token, csrf, err
 }
 
-// CreateWithCSRF returns an encrypted token carrying the user's credentials
-// and a bound CSRF token.
-func (s *SessionStore) CreateWithCSRF(username, password, csrf string) (string, error) {
+// CreateWithCSRF returns an encrypted token carrying the user's credentials,
+// capabilities, and a bound CSRF token.
+func (s *SessionStore) CreateWithCSRF(username, password, csrf string, features map[string]bool) (string, error) {
 	payload, err := json.Marshal(tokenPayload{
 		Username:  username,
 		Password:  password,
 		CsrfToken: csrf,
 		CreatedAt: time.Now().Unix(),
+		Features:  features,
 	})
 	if err != nil {
 		return "", err
@@ -82,33 +83,33 @@ func (s *SessionStore) CreateWithCSRF(username, password, csrf string) (string, 
 	return base64.RawURLEncoding.EncodeToString(sealed), nil
 }
 
-// Lookup decrypts a token and returns the credentials if valid.
-func (s *SessionStore) Lookup(token string) (username, password, csrf string, ok bool) {
+// Lookup decrypts a token and returns the credentials and capabilities if valid.
+func (s *SessionStore) Lookup(token string) (username, password, csrf string, features map[string]bool, ok bool) {
 	raw, err := base64.RawURLEncoding.DecodeString(token)
 	if err != nil {
-		return "", "", "", false
+		return "", "", "", nil, false
 	}
 
 	ns := s.aead.NonceSize()
 	if len(raw) < ns {
-		return "", "", "", false
+		return "", "", "", nil, false
 	}
 
 	plaintext, err := s.aead.Open(nil, raw[:ns], raw[ns:], nil)
 	if err != nil {
-		return "", "", "", false
+		return "", "", "", nil, false
 	}
 
 	var p tokenPayload
 	if err := json.Unmarshal(plaintext, &p); err != nil {
-		return "", "", "", false
+		return "", "", "", nil, false
 	}
 
 	if time.Since(time.Unix(p.CreatedAt, 0)) > sessionTimeout {
-		return "", "", "", false
+		return "", "", "", nil, false
 	}
 
-	return p.Username, p.Password, p.CsrfToken, true
+	return p.Username, p.Password, p.CsrfToken, p.Features, true
 }
 
 // Delete is a no-op for stateless tokens (the cookie is cleared by

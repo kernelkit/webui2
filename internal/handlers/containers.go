@@ -36,9 +36,12 @@ type containerResourceLimitJSON struct {
 	Memory yangInt64 `json:"memory"` // KiB
 }
 
-// containerListWrapper wraps the top-level RESTCONF container list response.
+// containerListWrapper wraps the top-level RESTCONF containers response.
+// The server returns the full "containers" object; the list lives inside it.
 type containerListWrapper struct {
-	Containers []containerJSON `json:"infix-containers:container"`
+	Containers struct {
+		Container []containerJSON `json:"container"`
+	} `json:"infix-containers:containers"`
 }
 
 // containerResourceUsageWrapper wraps the RESTCONF resource-usage response.
@@ -82,7 +85,7 @@ func (h *ContainersHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		CsrfToken:    csrfToken(r.Context()),
 		PageTitle:    "Containers",
 		ActivePage:   "containers",
-		Capabilities: DetectCapabilities(r.Context(), h.RC),
+		Capabilities: CapabilitiesFromContext(r.Context()),
 	}
 
 	// Detach from the request context so that RESTCONF calls survive
@@ -90,11 +93,11 @@ func (h *ContainersHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	ctx := context.WithoutCancel(r.Context())
 
 	var listResp containerListWrapper
-	if err := h.RC.Get(ctx, "/data/infix-containers:containers/container", &listResp); err != nil {
+	if err := h.RC.Get(ctx, "/data/infix-containers:containers", &listResp); err != nil {
 		log.Printf("restconf containers list: %v", err)
 		data.Error = "Could not fetch container information"
 	} else {
-		containers := listResp.Containers
+		containers := listResp.Containers.Container
 
 		// Fetch resource-usage for each container concurrently.
 		usages := make([]containerResourceUsageJSON, len(containers))

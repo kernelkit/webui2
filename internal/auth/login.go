@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/kernelkit/infix-webui/internal/handlers"
 	"github.com/kernelkit/infix-webui/internal/restconf"
 	"github.com/kernelkit/infix-webui/internal/security"
 )
@@ -57,7 +58,14 @@ func (h *LoginHandler) DoLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, csrfToken, err := h.Store.Create(username, password)
+	// Probe optional features once at login and bake into the session.
+	ctx := restconf.ContextWithCredentials(r.Context(), restconf.Credentials{
+		Username: username,
+		Password: password,
+	})
+	caps := handlers.DetectCapabilities(ctx, h.RC)
+
+	token, csrfToken, err := h.Store.Create(username, password, caps.Features())
 	if err != nil {
 		log.Printf("session create error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

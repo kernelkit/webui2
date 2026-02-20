@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/kernelkit/infix-webui/internal/auth"
+	"github.com/kernelkit/infix-webui/internal/handlers"
 	"github.com/kernelkit/infix-webui/internal/restconf"
 	"github.com/kernelkit/infix-webui/internal/security"
 )
@@ -29,7 +30,7 @@ func authMiddleware(store *auth.SessionStore, next http.Handler) http.Handler {
 			return
 		}
 
-		username, password, csrf, ok := store.Lookup(cookie.Value)
+		username, password, csrf, features, ok := store.Lookup(cookie.Value)
 		if !ok {
 			deny(w, r)
 			return
@@ -39,7 +40,7 @@ func authMiddleware(store *auth.SessionStore, next http.Handler) http.Handler {
 		// Skip for background polling endpoints so they don't keep
 		// the session alive indefinitely.
 		if !isPollingPath(r.URL.Path) {
-			if fresh, err := store.CreateWithCSRF(username, password, csrf); err == nil {
+			if fresh, err := store.CreateWithCSRF(username, password, csrf, features); err == nil {
 				http.SetCookie(w, &http.Cookie{
 					Name:     cookieName,
 					Value:    fresh,
@@ -56,6 +57,7 @@ func authMiddleware(store *auth.SessionStore, next http.Handler) http.Handler {
 			Password: password,
 		})
 		ctx = security.WithToken(ctx, csrf)
+		ctx = handlers.ContextWithCapabilities(ctx, handlers.NewCapabilities(features))
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

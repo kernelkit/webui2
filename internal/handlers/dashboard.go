@@ -236,7 +236,7 @@ func (h *DashboardHandler) Index(w http.ResponseWriter, r *http.Request) {
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "dashboard",
 		PageTitle:    "Dashboard",
-		Capabilities: DetectCapabilities(r.Context(), h.RC),
+		Capabilities: CapabilitiesFromContext(r.Context()),
 	}
 
 	// Detach from the request context so that RESTCONF calls survive

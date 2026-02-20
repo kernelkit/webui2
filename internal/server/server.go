@@ -63,7 +63,15 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	servicesTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/services.html")
+	dhcpTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/dhcp.html")
+	if err != nil {
+		return nil, err
+	}
+	ntpTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/ntp.html")
+	if err != nil {
+		return nil, err
+	}
+	lldpTmpl, err := template.ParseFS(templateFS, "layouts/*.html", "pages/lldp.html")
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +116,9 @@ func New(
 	routing := &handlers.RoutingHandler{Template: routingTmpl, RC: rc}
 	wifi := &handlers.WiFiHandler{Template: wifiTmpl, RC: rc}
 	vpn := &handlers.VPNHandler{Template: vpnTmpl, RC: rc}
-	services := &handlers.ServicesHandler{Template: servicesTmpl, RC: rc}
+	dhcp := &handlers.DHCPHandler{Template: dhcpTmpl, RC: rc}
+	ntp := &handlers.NTPHandler{Template: ntpTmpl, RC: rc}
+	lldp := &handlers.LLDPHandler{Template: lldpTmpl, RC: rc}
 	containers := &handlers.ContainersHandler{Template: containersTmpl, RC: rc}
 
 	mux := http.NewServeMux()
@@ -137,7 +147,9 @@ func New(
 	mux.HandleFunc("GET /routing", routing.Overview)
 	mux.HandleFunc("GET /wifi", wifi.Overview)
 	mux.HandleFunc("GET /vpn", vpn.Overview)
-	mux.HandleFunc("GET /services", services.Overview)
+	mux.HandleFunc("GET /dhcp", dhcp.Overview)
+	mux.HandleFunc("GET /ntp", ntp.Overview)
+	mux.HandleFunc("GET /lldp", lldp.Overview)
 	mux.HandleFunc("GET /containers", containers.Overview)
 
 	handler := authMiddleware(store, mux)

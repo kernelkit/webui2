@@ -65,7 +65,7 @@ func (h *VPNHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		CsrfToken:    csrfToken(r.Context()),
 		PageTitle:    "VPN",
 		ActivePage:   "vpn",
-		Capabilities: DetectCapabilities(r.Context(), h.RC),
+		Capabilities: CapabilitiesFromContext(r.Context()),
 	}
 
 	// Detach from the request context so that RESTCONF calls survive

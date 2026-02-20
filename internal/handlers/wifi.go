@@ -15,14 +15,22 @@ import (
 // operational fields from infix-hardware YANG that are not in wifiRadioJSON.
 // wifiRadioJSON (defined in interfaces.go) only covers survey data; this
 // struct captures the full operational state returned by RESTCONF.
+// wifiMaxIfJSON maps the max-interfaces container from infix-hardware YANG.
+type wifiMaxIfJSON struct {
+	AP      int `json:"ap"`
+	Station int `json:"station"`
+	Monitor int `json:"monitor"`
+}
+
 type wifiRadioHWJSON struct {
-	Channel   interface{}     `json:"channel"` // uint16 or "auto"
-	Band      string          `json:"band"`
-	Frequency int             `json:"frequency"` // MHz, operational
-	Noise     int             `json:"noise"`     // dBm, operational
-	Driver    string          `json:"driver"`
-	Bands     []wifiBandJSON  `json:"bands"`
-	Survey    *wifiSurveyJSON `json:"survey"`
+	Channel       interface{}     `json:"channel"` // uint16 or "auto"
+	Band          string          `json:"band"`
+	Frequency     int             `json:"frequency"` // MHz, operational
+	Noise         int             `json:"noise"`     // dBm, operational
+	Driver        string          `json:"driver"`
+	Bands         []wifiBandJSON  `json:"bands"`
+	MaxInterfaces *wifiMaxIfJSON  `json:"max-interfaces"`
+	Survey        *wifiSurveyJSON `json:"survey"`
 }
 
 type wifiBandJSON struct {
@@ -38,6 +46,7 @@ type wifiBandJSON struct {
 type hwComponentWiFiJSON struct {
 	Name      string           `json:"name"`
 	Class     string           `json:"class"`
+	MfgName   string           `json:"mfg-name"`
 	WiFiRadio *wifiRadioHWJSON `json:"infix-hardware:wifi-radio"`
 }
 
@@ -49,17 +58,29 @@ type hardwareWiFiWrapper struct {
 
 // WiFiRadio is the template data for a single physical radio.
 type WiFiRadio struct {
+	Name         string
+	Channel      string
+	Band         string
+	Frequency    int
+	Noise        int
+	Driver       string
+	Manufacturer string
+	Standards    string
+	MaxAP        string
+	HTCapable    bool
+	VHTCapable   bool
+	HECapable    bool
+	Bands        []WiFiBand
+	SurveySVG    template.HTML
+	Interfaces   []WiFiInterface
+}
+
+type WiFiBand struct {
+	Band       string
 	Name       string
-	Channel    string // "auto" or channel number string
-	Band       string // "2.4GHz", "5GHz", etc.
-	Frequency  int    // MHz
-	Noise      int    // dBm
-	Driver     string
 	HTCapable  bool
 	VHTCapable bool
 	HECapable  bool
-	SurveySVG  template.HTML
-	Interfaces []WiFiInterface
 }
 
 // ChannelSurvey holds processed survey data for one channel.
@@ -134,7 +155,7 @@ func (h *WiFiHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		CsrfToken:    csrfToken(r.Context()),
 		PageTitle:    "WiFi",
 		ActivePage:   "wifi",
-		Capabilities: DetectCapabilities(r.Context(), h.RC),
+		Capabilities: CapabilitiesFromContext(r.Context()),
 	}
 
 	// Detach from the request context so that RESTCONF calls survive
@@ -196,17 +217,33 @@ func buildWiFiRadios(components []hwComponentWiFiJSON, ifaces []ifaceJSON) []WiF
 		r := c.WiFiRadio
 
 		radio := WiFiRadio{
-			Name:      c.Name,
-			Band:      r.Band,
-			Frequency: r.Frequency,
-			Noise:     r.Noise,
-			Driver:    r.Driver,
-			Channel:   wifiChannelString(r.Channel),
+			Name:         c.Name,
+			Band:         r.Band,
+			Frequency:    r.Frequency,
+			Noise:        r.Noise,
+			Driver:       r.Driver,
+			Channel:      wifiChannelString(r.Channel),
+			Manufacturer: c.MfgName,
 		}
 
 		// Capability flags: check per-band capabilities; if any band supports
 		// HT/VHT/HE, mark the radio as capable.
+		var bandNames []string
 		for _, b := range r.Bands {
+			name := b.Name
+			if name == "" {
+				name = b.Band
+			}
+			radio.Bands = append(radio.Bands, WiFiBand{
+				Band:       b.Band,
+				Name:       name,
+				HTCapable:  b.HTCapable,
+				VHTCapable: b.VHTCapable,
+				HECapable:  b.HECapable,
+			})
+			if b.Name != "" {
+				bandNames = append(bandNames, b.Name)
+			}
 			if b.HTCapable {
 				radio.HTCapable = true
 			}
@@ -216,6 +253,26 @@ func buildWiFiRadios(components []hwComponentWiFiJSON, ifaces []ifaceJSON) []WiF
 			if b.HECapable {
 				radio.HECapable = true
 			}
+		}
+
+		// Derive standards string from aggregated capabilities (matches CLI).
+		var standards []string
+		if radio.HTCapable {
+			standards = append(standards, "11n")
+		}
+		if radio.VHTCapable {
+			standards = append(standards, "11ac")
+		}
+		if radio.HECapable {
+			standards = append(standards, "11ax")
+		}
+		if len(standards) > 0 {
+			radio.Standards = joinStrings(standards, "/")
+		}
+
+		// Max AP count from max-interfaces container.
+		if r.MaxInterfaces != nil && r.MaxInterfaces.AP > 0 {
+			radio.MaxAP = fmt.Sprintf("%d", r.MaxInterfaces.AP)
 		}
 
 		// Generate channel survey SVG if survey data exists.

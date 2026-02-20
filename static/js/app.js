@@ -135,25 +135,52 @@
   }
 })();
 
-// Dark mode toggle
+// Dark mode toggle (auto / light / dark)
 (function() {
   function getTheme() {
-    return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('theme='))?.split('=')[1];
+    var m = document.cookie.split(';').map(function(c){return c.trim();}).find(function(c){return c.indexOf('theme=')===0;});
+    return m ? m.split('=')[1] : null;
   }
-  function setTheme(theme) {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.cookie = 'theme=' + theme + '; path=/; max-age=31536000; samesite=lax';
-    const btn = document.getElementById('theme-toggle');
-    if (btn) btn.setAttribute('aria-pressed', theme === 'dark');
+  function applyTheme(mode) {
+    var el = document.documentElement;
+    el.classList.remove('dark', 'light');
+    if (mode === 'dark') {
+      el.classList.add('dark');
+    } else if (mode === 'light') {
+      el.classList.add('light');
+    }
+    updateIcon(mode || 'auto');
   }
-  // Apply saved theme on load
-  const saved = getTheme();
-  if (saved) { setTheme(saved); }
-  // Toggle on button click
+  function updateIcon(mode) {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    var icons = btn.querySelectorAll('svg');
+    for (var i = 0; i < icons.length; i++) icons[i].style.display = 'none';
+    var id = mode === 'dark' ? 'icon-dark' : mode === 'light' ? 'icon-light' : 'icon-auto';
+    var active = btn.querySelector('#' + id);
+    if (active) active.style.display = '';
+    btn.setAttribute('aria-label',
+      mode === 'dark' ? 'Theme: dark (click for auto)' :
+      mode === 'light' ? 'Theme: light (click for dark)' :
+      'Theme: auto (click for light)');
+  }
+  function setTheme(mode) {
+    if (mode) {
+      document.cookie = 'theme=' + mode + '; path=/; max-age=31536000; samesite=lax';
+    } else {
+      document.cookie = 'theme=; path=/; max-age=0; samesite=lax';
+    }
+    applyTheme(mode);
+  }
+  var saved = getTheme();
+  applyTheme(saved);
   document.addEventListener('DOMContentLoaded', function() {
-    const btn = document.getElementById('theme-toggle');
+    var btn = document.getElementById('theme-toggle');
     if (btn) btn.addEventListener('click', function() {
-      setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+      var cur = getTheme();
+      if (!cur) setTheme('light');
+      else if (cur === 'light') setTheme('dark');
+      else setTheme(null);
     });
   });
 })();

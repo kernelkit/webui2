@@ -139,7 +139,7 @@ func (h *SystemHandler) Firmware(w http.ResponseWriter, r *http.Request) {
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "firmware",
 		PageTitle:    "Firmware",
-		Capabilities: DetectCapabilities(r.Context(), h.RC),
+		Capabilities: CapabilitiesFromContext(r.Context()),
 		Message:      r.URL.Query().Get("msg"),
 	}
 

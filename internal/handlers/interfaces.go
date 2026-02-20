@@ -225,7 +225,7 @@ func (h *InterfacesHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "interfaces",
 		PageTitle:    "Interfaces",
-		Capabilities: DetectCapabilities(r.Context(), h.RC),
+		Capabilities: CapabilitiesFromContext(r.Context()),
 	}
 
 	var ifaces interfacesWrapper
@@ -737,7 +737,7 @@ func (h *InterfacesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 	data := buildDetailData(creds.Username, csrfToken(r.Context()), iface)
 	data.ActivePage = "interfaces"
 	data.PageTitle = "Interface " + name
-	data.Capabilities = DetectCapabilities(r.Context(), h.RC)
+	data.Capabilities = CapabilitiesFromContext(r.Context())
 
 	tmplName := "iface-detail.html"
 	if r.Header.Get("HX-Request") == "true" {

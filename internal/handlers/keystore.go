@@ -97,7 +97,7 @@ func (h *KeystoreHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "keystore",
 		PageTitle:    "Keystore",
-		Capabilities: DetectCapabilities(r.Context(), h.RC),
+		Capabilities: CapabilitiesFromContext(r.Context()),
 	}
 
 	var ks keystoreWrapper

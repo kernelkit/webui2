@@ -115,7 +115,7 @@ func (h *FirewallHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		CsrfToken:    csrfToken(r.Context()),
 		ActivePage:   "firewall",
 		PageTitle:    "Firewall",
-		Capabilities: DetectCapabilities(r.Context(), h.RC),
+		Capabilities: CapabilitiesFromContext(r.Context()),
 	}
 
 	var fw firewallWrapper
