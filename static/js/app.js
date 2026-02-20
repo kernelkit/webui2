@@ -134,3 +134,26 @@
     });
   }
 })();
+
+// Dark mode toggle
+(function() {
+  function getTheme() {
+    return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('theme='))?.split('=')[1];
+  }
+  function setTheme(theme) {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.cookie = 'theme=' + theme + '; path=/; max-age=31536000; samesite=lax';
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.setAttribute('aria-pressed', theme === 'dark');
+  }
+  // Apply saved theme on load
+  const saved = getTheme();
+  if (saved) { setTheme(saved); }
+  // Toggle on button click
+  document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.addEventListener('click', function() {
+      setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+    });
+  });
+})();

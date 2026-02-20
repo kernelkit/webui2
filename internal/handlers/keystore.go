@@ -58,6 +58,8 @@ type certificateJSON struct {
 type keystoreData struct {
 	CsrfToken      string
 	Username       string
+	ActivePage     string
+	Capabilities   *Capabilities
 	SymmetricKeys  []symKeyEntry
 	AsymmetricKeys []asymKeyEntry
 	Empty          bool
@@ -90,8 +92,10 @@ type KeystoreHandler struct {
 func (h *KeystoreHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
 	data := keystoreData{
-		Username:  creds.Username,
-		CsrfToken: csrfToken(r.Context()),
+		Username:     creds.Username,
+		CsrfToken:    csrfToken(r.Context()),
+		ActivePage:   "keystore",
+		Capabilities: DetectCapabilities(r.Context(), h.RC),
 	}
 
 	var ks keystoreWrapper

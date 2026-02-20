@@ -182,10 +182,12 @@ type ethFrameStats struct {
 // Template data structures.
 
 type interfacesData struct {
-	CsrfToken  string
-	Username   string
-	Interfaces []ifaceEntry
-	Error      string
+	CsrfToken    string
+	Username     string
+	ActivePage   string
+	Capabilities *Capabilities
+	Interfaces   []ifaceEntry
+	Error        string
 }
 
 type ifaceEntry struct {
@@ -218,8 +220,10 @@ type InterfacesHandler struct {
 func (h *InterfacesHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
 	data := interfacesData{
-		Username:  creds.Username,
-		CsrfToken: csrfToken(r.Context()),
+		Username:     creds.Username,
+		CsrfToken:    csrfToken(r.Context()),
+		ActivePage:   "interfaces",
+		Capabilities: DetectCapabilities(r.Context(), h.RC),
 	}
 
 	var ifaces interfacesWrapper
@@ -383,6 +387,8 @@ func makeIfaceEntry(iface ifaceJSON, indent string) ifaceEntry {
 type ifaceDetailData struct {
 	CsrfToken        string
 	Username         string
+	ActivePage       string
+	Capabilities     *Capabilities
 	Name             string
 	Type             string
 	Status           string
@@ -726,6 +732,8 @@ func (h *InterfacesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := buildDetailData(creds.Username, csrfToken(r.Context()), iface)
+	data.ActivePage = "interfaces"
+	data.Capabilities = DetectCapabilities(r.Context(), h.RC)
 
 	tmplName := "iface-detail.html"
 	if r.Header.Get("HX-Request") == "true" {

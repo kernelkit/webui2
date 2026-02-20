@@ -4,40 +4,148 @@
     <img src="/assets/img/logo.png" alt="Infix" class="sidebar-logo">
   </div>
   <ul class="sidebar-nav">
+    <li class="nav-section-header">Network</li>
     <li>
       <a href="/"
          hx-get="/"
          hx-target="#content"
          hx-push-url="true"
-         class="nav-link">Dashboard</a>
+         class="nav-link {{if eq .ActivePage "dashboard"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/dashboard.svg')"></span>
+        Dashboard
+      </a>
     </li>
     <li>
       <a href="/interfaces"
          hx-get="/interfaces"
          hx-target="#content"
          hx-push-url="true"
-         class="nav-link">Interfaces</a>
+         class="nav-link {{if eq .ActivePage "interfaces"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/interfaces.svg')"></span>
+        Interfaces
+      </a>
+    </li>
+    <li>
+      <a href="/routing"
+         hx-get="/routing"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link {{if eq .ActivePage "routing"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/routing.svg')"></span>
+        Routing
+      </a>
     </li>
     <li>
       <a href="/firewall"
          hx-get="/firewall"
          hx-target="#content"
          hx-push-url="true"
-         class="nav-link">Firewall</a>
+         class="nav-link {{if eq .ActivePage "firewall"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/firewall.svg')"></span>
+        Firewall
+      </a>
+    </li>
+
+    {{if and .Capabilities .Capabilities.WiFi}}
+    <li class="nav-section-header">Wireless</li>
+    <li>
+      <a href="/wifi"
+         hx-get="/wifi"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link {{if eq .ActivePage "wifi"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/wifi.svg')"></span>
+        WiFi
+      </a>
+    </li>
+    {{end}}
+
+    {{if and .Capabilities .Capabilities.WireGuard}}
+    <li class="nav-section-header">VPN</li>
+    <li>
+      <a href="/vpn"
+         hx-get="/vpn"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link {{if eq .ActivePage "vpn"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/wireguard.svg')"></span>
+        WireGuard
+      </a>
+    </li>
+    {{end}}
+
+    {{if and .Capabilities (or .Capabilities.DHCPServer .Capabilities.NTP .Capabilities.LLDP)}}
+    <li class="nav-section-header">Services</li>
+    {{if .Capabilities.DHCPServer}}
+    <li>
+      <a href="/services#dhcp"
+         hx-get="/services"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link {{if eq .ActivePage "services"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/dhcp.svg')"></span>
+        DHCP
+      </a>
+    </li>
+    {{end}}
+    {{if .Capabilities.NTP}}
+    <li>
+      <a href="/services#ntp"
+         hx-get="/services"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link {{if eq .ActivePage "services"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/ntp.svg')"></span>
+        NTP
+      </a>
+    </li>
+    {{end}}
+    {{if .Capabilities.LLDP}}
+    <li>
+      <a href="/services#lldp"
+         hx-get="/services"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link {{if eq .ActivePage "services"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/lldp.svg')"></span>
+        LLDP
+      </a>
+    </li>
+    {{end}}
+    {{end}}
+
+    <li class="nav-section-header">System</li>
+    {{if and .Capabilities .Capabilities.Containers}}
+    <li>
+      <a href="/containers"
+         hx-get="/containers"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link {{if eq .ActivePage "containers"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/containers.svg')"></span>
+        Containers
+      </a>
+    </li>
+    {{end}}
+    <li>
+      <a href="/firmware"
+         hx-get="/firmware"
+         hx-target="#content"
+         hx-push-url="true"
+         class="nav-link {{if eq .ActivePage "firmware"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/firmware.svg')"></span>
+        Firmware
+      </a>
     </li>
     <li>
       <a href="/keystore"
          hx-get="/keystore"
          hx-target="#content"
          hx-push-url="true"
-         class="nav-link">Keystore</a>
-    </li>
-    <li>
-      <a href="/firmware"
-         hx-get="/firmware"
-         hx-target="#content"
-         hx-push-url="true"
-         class="nav-link">Firmware</a>
+         class="nav-link {{if eq .ActivePage "keystore"}}active{{end}}">
+        <span class="nav-icon" style="--icon: url('/assets/img/icons/keystore.svg')"></span>
+        Keystore
+      </a>
     </li>
   </ul>
   <div class="sidebar-footer">

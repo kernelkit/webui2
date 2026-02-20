@@ -56,18 +56,20 @@ type policyJSON struct {
 // Template data structures.
 
 type firewallData struct {
-	CsrfToken   string
-	Username    string
-	Enabled     bool
-	EnabledText string
-	DefaultZone string
-	Lockdown    bool
-	Logging     string
-	ZoneNames   []string
-	Matrix      []matrixRow
-	Zones       []zoneEntry
-	Policies    []policyEntry
-	Error       string
+	CsrfToken    string
+	Username     string
+	ActivePage   string
+	Capabilities *Capabilities
+	Enabled      bool
+	EnabledText  string
+	DefaultZone  string
+	Lockdown     bool
+	Logging      string
+	ZoneNames    []string
+	Matrix       []matrixRow
+	Zones        []zoneEntry
+	Policies     []policyEntry
+	Error        string
 }
 
 type matrixRow struct {
@@ -108,8 +110,10 @@ type FirewallHandler struct {
 func (h *FirewallHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	creds := restconf.CredentialsFromContext(r.Context())
 	data := firewallData{
-		Username:  creds.Username,
-		CsrfToken: csrfToken(r.Context()),
+		Username:     creds.Username,
+		CsrfToken:    csrfToken(r.Context()),
+		ActivePage:   "firewall",
+		Capabilities: DetectCapabilities(r.Context(), h.RC),
 	}
 
 	var fw firewallWrapper
