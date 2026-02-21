@@ -81,6 +81,7 @@
   --fg-muted:      var(--slate-400);
   --border:        var(--slate-700);
   --border-subtle: var(--slate-800);
+  --zebra-stripe:  rgba(255,255,255,0.03);
 }
 
 /* Force Light Mode (override system dark preference) */
@@ -381,6 +382,12 @@ a:hover {
   border-bottom: none;
 }
 
+.info-table tr:nth-child(even),
+.disk-table tbody tr:nth-child(even),
+.counters-table tbody tr:nth-child(even) {
+  background-color: var(--zebra-stripe, rgba(0,0,0,0.025));
+}
+
 .info-table th {
   text-align: left;
   font-weight: 500;
@@ -430,8 +437,12 @@ a:hover {
   text-transform: uppercase;
 }
 
+.data-table tbody tr:nth-child(even) {
+  background-color: var(--zebra-stripe, rgba(0,0,0,0.025));
+}
+
 .data-table tbody tr:hover {
-  background-color: rgba(0,0,0,0.02);
+  background-color: rgba(0,0,0,0.05);
 }
 
 /* ==========================================================================
